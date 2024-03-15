@@ -1,0 +1,314 @@
+﻿Program.Sub.Preflight.Start
+V.Global.bError.Declare(Boolean)
+V.Global.bUnattended.Declare(Boolean)
+V.Global.iCnt.Declare(Long,0)
+V.Global.sRESTError.Declare(String, "N")
+V.Global.sRetry.Declare(String, "Y")
+V.Global.sReadError.Declare(String, "N")
+V.Global.sTPCN.Declare(String)
+V.Global.sPartURL.Declare(String)
+V.Global.sNotURL.Declare(String)
+V.Global.sPost.Declare(String, "N")
+V.Global.sErrorMessage.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sFile.Declare(String)
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+V.Global.sReadError.Set("N")
+F.Intrinsic.String.Build("{0}\PartRequest_IsRunning.pid", V.Caller.FilesDir, V.local.sFile)
+F.Intrinsic.File.Exists(V.Local.sFile, V.Local.bFileExists)
+F.Intrinsic.Control.If(v.Local.bFileExists,=,False)
+	F.Intrinsic.File.String2File(V.Local.sFile, V.Ambient.PID)
+F.Intrinsic.Control.Else
+	F.Intrinsic.File.DeleteFile(V.Local.sFile)
+	F.Intrinsic.File.String2File(V.Local.sFile, V.Ambient.PID)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conCOM.OpenCommonConnection
+
+F.Intrinsic.Control.CallSub(RESTCreds)
+F.Intrinsic.Control.CallSub(QueueRequest)
+F.Intrinsic.Control.CallSub(f_Main_Unload)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.RESTCreds.Start
+F.Intrinsic.Control.Try
+V.Local.sSQL.Declare(String)
+
+V.Global.sReadError.Set("N")
+F.Intrinsic.Control.If(V.DataTable.dtRESTCreds.Exists)
+	F.Data.DataTable.Close("dtRESTCreds")
+F.Intrinsic.Control.EndIf
+F.Data.DataTable.CreateFromSQL("dtRESTCreds", "conCOM", "SELECT * FROM GCG_6013_REST_CREDS WHERE PROPERTY_ACTIVE = 'Y' ", True)
+F.Intrinsic.Control.ExitSub
+
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.RESTCreds.End
+
+Program.Sub.QueueRequest.Start
+F.Intrinsic.Control.Try
+V.Local.bIsConnected.Declare(Boolean)
+V.Local.iCnt.Declare(Long)
+V.Local.iRow.Declare(Long)
+V.Local.iRet.Declare(Long)
+V.Local.sFileName.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.dDate.Declare(date)
+V.Local.dCurrDate.Declare(Date)
+V.Local.dFutureDate.Declare(Date)
+V.Local.sDate.Declare(String)
+V.Local.sTime.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sSelected.Declare(String)
+V.Local.sTCPN.Declare(String)
+V.Local.sDataPacket.Declare(String)
+V.Local.sJSON1.Declare(String)
+V.Local.sClientId.Declare(String)
+V.Local.sClientSecret.Declare(String)
+V.Local.sOtherHeaders.Declare(String)
+V.Local.sOutputFile.Declare(String)
+V.Local.sCert.Declare(String)
+V.Local.sCertKey.Declare(String)
+V.Local.sFutureTime.Declare(String)
+V.Local.sCurrDateTime.Declare(String)
+V.Local.sFuDateTime.Declare(String)
+V.Local.sProcessTime.Declare(String)
+V.Local.sPastDateTime.Declare(String)
+V.Local.sPartURL.Declare(String)
+
+V.Global.sReadError.Set("N")
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CLIENT_ID' ", V.Local.sSelected)
+V.Local.sClientId.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CLIENT_SECRET' ", V.Local.sSelected)
+V.Local.sClientSecret.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CERT' ", V.Local.sSelected)
+V.Local.sCert.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CERT_KEY' ", V.Local.sSelected)
+V.Local.sCertKey.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'REQUEST_URL' ", V.Local.sSelected)
+V.Local.sPartURL.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+V.Global.sPartURL.Set(V.Local.sPartURL)
+
+F.Intrinsic.String.Concat(V.Local.sClientId,V.Ambient.NewLine,V.Local.sClientSecret,V.Local.sOtherHeaders)
+F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\RESTOutput\RestSuccessResult.txt", V.Caller.FilesDir, V.Local.sOutputFile)
+
+
+F.Intrinsic.Control.If(V.DataTable.dtPartQueue.Exists)
+	F.Data.DataTable.Close("dtPartQueue")
+F.Intrinsic.Control.EndIf
+
+'create a datatable for all the queued parts that haven't been processed yet
+F.Data.DataTable.CreateFromSQL("dtPartQueue","conCOM", "SELECT PART, CONCAT(CONCAT(PROCESS_DATE, ' '), PROCESS_TIME) AS PROCESS_DATETIME FROM GCG_6013_PART_QUEUE WHERE PROCESSED = 'N' AND STATUS = 'Enabled' ORDER BY PART", True)
+
+V.Local.dDate.Set(V.Ambient.Now)
+
+F.Intrinsic.String.Format(V.Local.dDate, "YYYY-MM-DD Hh:Nn", V.Local.sDate)
+F.Intrinsic.Date.DateAdd("N", -30, V.Local.sDate, V.Local.sPastDateTime)
+F.Intrinsic.Date.DateAdd("N", 30, V.Local.sDate, V.Local.sFuDateTime)
+F.Intrinsic.String.Format(V.Local.sPastDateTime, "YYYY-MM-DD Hh:Nn", V.Local.sPastDateTime)
+F.Intrinsic.String.Format(V.Local.sFuDateTime, "YYYY-MM-DD Hh:Nn", V.Local.sFuDateTime)
+F.Intrinsic.String.Build("PROCESS_DATETIME > '{0}' AND PROCESS_DATETIME < '{1}'", V.Local.sPastDateTime, V.Local.sFuDateTime, V.Local.sFilter)
+
+'select the rows that match today's date and time range within 30 minutes
+F.Data.DataTable.Select("dtPartQueue", V.Local.sFilter,V.Local.sSelected)
+F.Intrinsic.Control.If(V.Local.sSelected,<>,"***NORETURN***")
+	F.Intrinsic.String.Split(V.Local.sSelected,"*!*", v.Local.sSelected)
+	F.Intrinsic.Control.For(V.Local.iCnt,V.Local.sSelected.LBound, V.Local.sSelected.UBound, 1)
+		V.Local.iRow.Set(V.Local.sSelected(V.Local.iCnt))
+		V.Local.sTCPN.Set(V.DataTable.dtPartQueue(V.Local.iRow).PART!FieldValTrim)
+		V.Global.sTPCN.Set(V.DataTable.dtPartQueue(V.Local.iRow).PART!FieldValTrim)
+		F.Intrinsic.String.Replace(v.Local.sTCPN, v.Ambient.NewLine, "", v.Local.sTCPN)
+		F.Intrinsic.String.Build("""tcpn" : "{0}""", v.Local.sTCPN.Trim, V.Local.sJSON1)
+		F.Intrinsic.String.Build("{{0}{1}{0}}", V.Ambient.NewLine,V.Local.sJSON1, V.Local.sDataPacket)
+		'adding the properties 
+		Function.Communication.REST.SetProperty("HTTPMethod","POST")
+		Function.Communication.REST.SetProperty("POSTData",V.Local.sDataPacket)
+		Function.Communication.REST.SetProperty("contentType","application/json")
+
+		'Adding the OtherHeaders properties
+		Function.Communication.REST.SetProperty("OtherHeaders",V.Local.sOtherHeaders)
+		F.Communication.REST.SetProperty("SSLcert","cstPFXFile", V.Local.sCert.Trim, V.Local.sCertKey.Trim, "*")  		
+		F.Communication.REST.SetProperty("LocalFile", V.Local.sOutputFile)
+		
+		F.Intrinsic.Control.CallSub(PostCall)
+
+		V.Local.sProcessTime.Set(V.Ambient.Time)
+		F.Intrinsic.String.Format(V.Local.sProcessTime, "Hh:Nn", V.Local.sProcessTime)
+		
+		F.Intrinsic.String.Build("UPDATE GCG_6013_PART_QUEUE SET PROCESSED = 'Y', PROCESS_TIME = '{0}' WHERE PART = '{1}'", V.Local.sProcessTime,V.Local.sTCPN.Trim, V.Local.sSQL)
+		F.ODBC.Connection!conCOM.Execute(V.Local.sSQL)
+		
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.QueueRequest.End
+
+Program.Sub.PostCall.Start
+F.Intrinsic.Control.Try
+V.Local.bIsConnected.Declare(Boolean)
+V.Global.sReadError.Set("")
+
+F.Intrinsic.Control.Try
+	F.Communication.REST.Post(V.Global.sPartURL.Trim)
+F.Intrinsic.Control.Catch
+	 F.Communication.REST.ReadProperty("Connected", V.Local.bIsConnected)
+	 F.Intrinsic.Control.If(V.Local.bIsConnected,=,False, "AND", V.Global.iCnt,<>,3)
+	 	F.Intrinsic.UI.Sleep(60)
+	 	F.Intrinsic.Math.Add(V.Global.iCnt,1,V.Global.iCnt)
+	 	F.Communication.REST.Post(V.Global.sPartURL.Trim)
+	 F.Intrinsic.Control.Elseif(V.Local.bIsConnected,=,False, "AND", V.Global.iCnt,=,3)
+	 	V.Global.sErrorMessage.Set("Error occurred in REST Post Subroutine. Error description: The connection to the REST server has failed. The script has attempted to connect 3 times and was still unsuccessful.")
+		F.Intrinsic.Control.CallSub(LogError)
+	 F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndTry
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.PostCall.End
+
+Program.Sub.f_Main_UnLoad.Start
+F.Intrinsic.Control.Try
+V.Local.bExists.Declare(Boolean)
+V.Local.sFile.Declare(String)
+V.Global.sReadError.Set("N")
+
+F.Intrinsic.String.Build("{0}\PartRequest_IsRunning.pid", V.Caller.FilesDir, V.local.sFile)
+F.Intrinsic.File.Exists(V.Local.sFile, V.Local.bExists)
+F.Intrinsic.Control.If(V.Local.bExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFile)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conCOM.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.f_Main_UnLoad.End
+
+Program.Sub.LogError.Start
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sRESTError.Declare(String)
+V.Local.sErrorMessage.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.sTime.Declare(String)
+V.Local.sDateTime.Declare(String)
+V.Local.sProjName.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sFileName.Declare(String)
+V.Local.sErrorFileFolder.Declare(String)
+
+V.Local.sProjName.Set("GCG_6013_Part_Refresh_Request")
+
+F.Intrinsic.Control.If(V.Global.sReadError,=,"Y")
+	V.Local.sErrorMessage.Set(V.Global.sErrorMessage.Trim)
+	F.Intrinsic.String.Build("INSERT INTO GCG_6013_ERROR_LOG VALUES ('File Read Error', '{0}', '{1}', '{2}', '{3}')", V.Local.sErrorMessage, V.Ambient.Date.PervasiveDate, V.Ambient.Time, V.Local.sProjName.Trim,V.Local.sSQL)
+F.Intrinsic.Control.ElseIf(V.Global.sReadError,=,"N")
+	F.Intrinsic.String.Replace(V.Global.sErrorMessage, V.Ambient.NewLine, " ", V.Local.sErrorMessage)
+	F.Intrinsic.String.Build("INSERT INTO GCG_6013_ERROR_LOG VALUES ('GAB Error', '{0}', '{1}', '{2}', '{3}')", V.Local.sErrorMessage, V.Ambient.Date.PervasiveDate, V.Ambient.Time, V.Local.sProjName.Trim,V.Local.sSQL)
+F.Intrinsic.Control.Elseif(V.Global.sReadError,=, "")
+	F.Intrinsic.String.Replace(V.Global.sErrorMessage, V.Ambient.NewLine, " ", V.Local.sErrorMessage)
+	F.Intrinsic.String.Build("INSERT INTO GCG_6013_ERROR_LOG VALUES ('REST Connection Error', '{0}', '{1}', '{2}', '{3}')", V.Local.sErrorMessage, V.Ambient.Date.PervasiveDate, V.Ambient.Time, V.Local.sProjName.Trim,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conCom.Execute(V.Local.sSQL)
+
+
+F.Intrinsic.String.Build("{0}\PartRequest_IsRunning.pid", V.Caller.FilesDir, V.Local.sFileName)
+F.Intrinsic.File.Exists(V.Local.sFileName, V.Local.bFileExists)
+F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFileName)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(ErrorMessage, "ErrorNumber", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription, "Subroutine", V.Ambient.CurrentSubroutine, "UNATTENDED", V.Global.bUnattended, "Project", "6013", "ProjectTitle", "CPR Part Refresh Request", "Callback", "f_Main_UnLoad")
+F.Intrinsic.Control.EndTry
+Program.Sub.LogError.End
+
+Program.Sub.ErrorMessage.Start
+'basic error message for replacing catch block
+'this is really just for when printing the message and ending program
+'pass error number, error description, current subroutine
+'optional callback sub, this will be called before ending
+'optional unattended parameters, those subs may not exist if not using them but won't be called
+F.Intrinsic.Control.Try
+
+V.Local.iError.Declare(Long)
+V.Local.sErrorDescription.Declare(String)
+V.Local.sSubroutine.Declare(String)
+V.Local.sError.Declare(String)
+V.Local.bExists.Declare(Boolean)
+V.Local.sCallback.Declare(String)
+
+V.Local.iError.Set(V.Args.ErrorNumber)
+V.Local.sErrorDescription.Set(V.Args.ErrorDescription)
+V.Local.sSubroutine.Set(V.Args.Subroutine)
+
+'make sure we aren't in an error loop
+F.Intrinsic.Control.If(V.Global.bError)
+	F.Intrinsic.Control.End
+
+F.Intrinsic.Control.EndIf
+V.Global.bError.Set(True)
+
+F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Caller.ScriptFile, V.Ambient.Newline, V.Local.sSubroutine, V.Local.iError, V.Local.sErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+
+F.Intrinsic.Variable.ArgExists("UNATTENDED", V.Local.bExists)
+F.Intrinsic.Control.If(V.Local.bExists)
+	F.Intrinsic.Control.If(V.Args.UNATTENDED)
+		F.Intrinsic.Control.CallSub(UnattendedErrorMessage, "MESSAGE", V.Local.sError, "PROJECT", V.Args.PROJECT, "PROJECTTITLE", V.Args.PROJECTTITLE)
+	F.Intrinsic.Control.Else
+'		F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+'	F.Intrinsic.UI.Msgbox(V.Local.sError)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Variable.ArgExists("Callback", V.Local.bExists)
+F.Intrinsic.Control.If(V.Local.bExists)
+	V.Local.sCallback.Set(V.Args.Callback.Trim)
+	F.Intrinsic.Control.CallSub(V.Local.sCallback)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+
+F.Intrinsic.Control.EndTry
+Program.Sub.ErrorMessage.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$acollins$}$20210409172238028$}$h98hERc2yV72q0GaUGlwSaoK/aefTdVkB5SGxLdVwE9WL5kOsB5438l83386coRwzES2OwtHjj5IArGPCwHzJw==
+Program.Sub.Comments.End
