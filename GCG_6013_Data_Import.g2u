@@ -1,0 +1,1678 @@
+﻿Program.Sub.Preflight.Start
+V.Global.bError.Declare(Boolean)
+V.Global.bUnattended.Declare(Boolean)
+V.Global.bPartExists.Declare(Boolean)
+V.Global.sFile.Declare(String)
+V.Global.sFilePath.Declare(String)
+V.Global.sHeaders.Declare(String)
+V.Global.sPartInfo.Declare(String)
+V.Global.sPartNo.Declare	(String)
+V.Global.sRemoteHost.Declare(String)
+V.Global.sRemoteUser.Declare(String)
+V.Global.sRemotePass.Declare(String)
+V.Global.sRemotePort.Declare(String)
+V.Global.sRemotePath.Declare(String)
+V.Global.sRESTError.Declare(String, "N")
+V.Global.sRetry.Declare(String, "Y")
+V.Global.sPartExists.Declare(String, "N")
+V.Global.sErrorDetails.Declare(String)
+V.Global.sTCPN.Declare(String)
+V.Global.sErrorMessage.Declare(String)
+V.Global.sReadError.Declare(String,"N")
+V.Global.sInactiveFlag.Declare(String)
+V.Global.sLoc.Declare(String)
+V.Global.sMapper.Declare(String)
+V.Global.dFileDate.Declare(String)
+V.Global.sListDirDone.Declare(String)
+V.Global.sCoCode.Declare(String)
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sFileName.Declare(String)
+V.Local.sPID.Declare(String)
+V.Local.sSQL.Declare(String)
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+Function.Intrinsic.Debug.InvokeDebugger
+Function.Intrinsic.Debug.Stop
+
+'open connection to the database
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN, V.Ambient.PUser, v.Ambient.PPass)
+F.ODBC.Connection!conCom.OpenCommonConnection
+
+'write an IsRunning file for the watchdog
+F.Intrinsic.String.Build("{0}\DataImport.pid", V.Caller.FilesDir, V.Local.sFileName)
+F.Intrinsic.File.Exists(V.Local.sFileName, V.Local.bFileExists)
+F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFileName)
+	F.Intrinsic.File.String2File(V.Local.sFileName, V.Ambient.PID)
+F.Intrinsic.Control.Else
+	F.Intrinsic.File.String2File(V.Local.sFileName, V.Ambient.PID)
+F.Intrinsic.Control.EndIf
+
+'get the FTP settings 
+F.Intrinsic.Control.CallSub(GetFTPSettings)
+'login to FTP remote server
+F.Intrinsic.Control.CallSub(FTPLogin)
+'callsub to get RESTCall Creds
+F.Intrinsic.Control.CallSub(RESTCreds)
+'callsub to read the file
+F.Intrinsic.Control.CallSub(ReadOutputFile)
+
+F.Intrinsic.Control.CallSub(Form_Unload)
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.GetFTPSettings.Start
+F.Intrinsic.Control.Try
+V.Local.baValue.Declare(ByteArray)
+V.Local.sTemp.Declare(String)
+V.Local.sSQL.Declare(String)
+
+'query the settings table to download the remote server credentials
+F.Data.DataTable.CreateFromSQL("FTPSettings", "conCom", "SELECT * FROM GCG_6013_SETTINGS")
+F.Intrinsic.Control.If(V.DataTable.FTPSettings.RowCount--,<>,-1)
+	'decrypt and set the credentials to their corresponding global variables
+	V.Local.sTemp.Set(V.DataTable.FTPSettings(0).RemoteHost!FieldValTrim)
+	F.Intrinsic.String.ConvertString2BA(V.Local.sTemp, V.Local.baValue)
+	F.Global.Encryption.Decrypt(V.Local.baValue,v.Local.sTemp)
+	V.Global.sRemoteHost.Set(V.Local.sTemp.Trim)
+	
+	V.Local.sTemp.Set(V.DataTable.FTPSettings(0).RemoteUser!FieldValTrim)
+	F.Intrinsic.String.ConvertString2BA(V.Local.sTemp, V.Local.baValue)
+	F.Global.Encryption.Decrypt(V.Local.baValue,v.Local.sTemp)
+	V.Global.sRemoteUser.Set(V.Local.sTemp.Trim)
+	
+	V.Local.sTemp.Set(V.DataTable.FTPSettings(0).RemotePassword!FieldValTrim)
+	F.Intrinsic.String.ConvertString2BA(V.Local.sTemp, V.Local.baValue)
+	F.Global.Encryption.Decrypt(V.Local.baValue,v.Local.sTemp)
+	V.Global.sRemotePass.Set(V.Local.sTemp.Trim)
+	
+	V.Local.sTemp.Set(V.DataTable.FTPSettings(0).RemotePort!FieldValTrim)
+	F.Intrinsic.String.ConvertString2BA(V.Local.sTemp, V.Local.baValue)
+	F.Global.Encryption.Decrypt(V.Local.baValue,v.Local.sTemp)
+	V.Global.sRemotePort.Set(V.Local.sTemp.Trim)
+	
+	V.Local.sTemp.Set(v.DataTable.FTPSettings(0).RemotePath!FieldValTrim)
+	F.Intrinsic.String.ConvertString2BA(V.Local.sTemp, V.Local.baValue)
+	F.Global.Encryption.Decrypt(V.Local.baValue,v.Local.sTemp)
+	V.Global.sRemotePath.Set(V.Local.sTemp.Trim)
+F.Intrinsic.Control.Else
+	'inform user to setup SFTP settings if there are no records
+	F.Intrinsic.UI.Msgbox("Configure FTP Settings via Inventory > Administration > FTP Credentials (6013)", "Configure Settings")
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.GetFTPSettings.End
+
+Program.Sub.FTPLogin.Start
+F.Intrinsic.Control.Try
+V.Local.bConnected.Declare(Boolean)
+V.Local.iUser.Declare(Long)
+v.Local.iCnt.Declare(Long)
+V.Local.sSenderEmail.Declare(String)
+V.Local.sRecipientEmail.Declare(String)
+V.Local.sSender.Declare(String)
+F.Intrinsic.Control.AddEventHandler("SFTPDirList", "Listdir")
+
+
+F.Communication.SFTP.SetProperty("SSHAcceptServerAuthentication","true")
+F.Communication.SFTP.SetProperty("remoteHost", V.Global.sRemoteHost)
+F.Communication.SFTP.SetProperty("User", V.Global.sRemoteUser)
+F.Communication.SFTP.SetProperty("Password", V.Global.sRemotePass)
+F.Communication.SFTP.SetProperty("remotePort", V.Global.sRemotePort)
+
+F.Intrinsic.Control.Try
+	F.Communication.SFTP.Logon
+	
+	
+	F.Communication.SFTP.SetProperty("remotePath", V.Global.sRemotePath)
+	F.Communication.SFTP.ListDirectory
+		
+	F.Intrinsic.Control.If(V.Global.sListDirDone,=,"Y")
+		F.Communication.SFTP.DeleteFile("*.output")
+	F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	'F.Communication.SFTP.Logoff
+	F.Intrinsic.Control.DoUntil(V.Local.iCnt,=,4)
+		F.Communication.SFTP.Logon
+		
+		F.Communication.SFTP.ReadProperty("connected", V.Local.bConnected)
+		F.Intrinsic.Control.If(V.Local.bConnected,=,True)
+			
+			F.Communication.SFTP.SetProperty("remotePath", V.Global.sRemotePath)
+			F.Communication.SFTP.ListDirectory
+			
+			F.Intrinsic.Control.If(V.Global.sListDirDone,=,"Y")
+				F.Communication.SFTP.DeleteFile("*.output")
+			F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.ExitSub
+			
+		F.Intrinsic.Control.Else
+			F.Intrinsic.UI.Sleep(2)
+			F.Intrinsic.Math.Add(V.Local.iCnt,1,V.Local.iCnt)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Loop
+	F.Communication.SFTP.Logoff
+	
+	F.Global.Security.GetUserId("SUPERVSR", V.Caller.CompanyCode, V.Local.iUser)
+'	F.Global.Security.GetUserId(V.Caller.User, V.Caller.CompanyCode, V.Local.iUser)
+	F.Global.Security.GetUserEmail("SUPERVSR", V.Caller.CompanyCode, V.Local.sSenderEmail)
+	F.Intrinsic.String.Build("{0}*!*Data Import", V.Local.sSenderEmail, V.Local.sSender)
+	V.Local.sRecipientEmail.Set("cpr-gss-integration@te.com")
+	'get email command for supervsr
+	F.Global.Messaging.QueueMessage(V.Caller.CompanyCode, V.Local.iUser, V.Caller.Caller, "GS-CPR Integration Error - Remote Server Connection Failing", V.Local.sSender,V.Local.sRecipientEmail, "The data import has attempted to connect to the remote server 5 times. Each time the connection has failed. Please check the credentials to ensure the information is correct.")
+	'callsub to try and connect again
+'	F.Intrinsic.Control.CallSub(FTPLoginRetry)
+'	F.Intrinsic.UI.Msgbox("Connection Failed")
+'	F.Intrinsic.Control.End
+	F.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndTry
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.FTPLogin.End
+
+Program.Sub.FTPLoginRetry.Start
+F.Intrinsic.Control.Try
+f.Intrinsic.Control.DoUntil()
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.FTPLoginRetry.End
+
+Program.Sub.ListDir.Start
+F.Intrinsic.Control.Try
+V.Local.bOutputFile.Declare(Boolean)
+V.Local.iCnt.Declare(String)
+V.Local.sTemp.Declare(String)
+V.Local.sFileDate.Declare(String)
+V.Local.sFileDateTime.Declare(String)
+V.Local.sFileTime.Declare(String)
+V.Local.sGetFile.Declare(String)
+V.Local.sTempFile.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sConcat.Declare(String)
+V.Local.dFileDateTime.Declare(Date)
+V.Local.sImportDateTime.Declare(String)
+V.Local.sFileDateNew.Declare(String)
+F.Intrinsic.String.IsInString(V.Args.FileName, ".output", True, V.Local.bOutputFile)
+
+F.Intrinsic.Control.If(V.Local.bOutputFile,=,True)
+	F.Communication.SFTP.SetProperty("RemoteFile", V.Args.FileName)
+'	f.Communication.SFTP.SetProperty("FileTime",V.Args.FileTime)
+	V.Local.sFileDateNew.Set(V.Args.FileTime)
+	F.Intrinsic.String.Format(V.Local.sFileDateNew, "DD/MM/YYYY Hh:Nn:Ss", V.Local.sImportDateTime)
+'	V.Local.dFileDateTime.Set(V.Local.sImportDateTime.p)
+	F.Intrinsic.String.Format(V.Local.sImportDateTime, "MM-DD-YYYY HhNnSs", V.Local.sFileDateTime)
+	F.Intrinsic.String.Replace(V.Args.FileName, ".output", "", V.Local.sTempFile)
+	F.Intrinsic.String.Build("{0}_{1}.output", V.Local.sTempFile, V.Local.sFileDateTime, V.Local.sGetFile)
+	F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\{1}",V.Caller.FilesDir, V.Local.sGetFile, V.Local.sTemp)
+	F.Communication.SFTP.SetProperty("LocalFile", V.Local.sTemp)
+'	f.Communication.SFTP.SetProperty("TransferMode",1)
+	f.Communication.SFTP.SetProperty("Overwrite", True)
+	F.Communication.SFTP.Download
+'	F.Communication.SFTP.DeleteFile(V.Args.FileName)
+F.Intrinsic.Control.EndIf
+V.Global.sListDirDone.Set("Y")
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.ListDir.End
+
+Program.Sub.RESTCreds.Start
+F.Intrinsic.Control.Try
+V.Local.sSQL.Declare(String)
+
+F.Intrinsic.Control.If(V.DataTable.dtRESTCreds.Exists)
+	F.Data.DataTable.Close("dtRESTCreds")
+F.Intrinsic.Control.EndIf
+F.Data.DataTable.CreateFromSQL("dtRESTCreds", "conCom", "SELECT * FROM GCG_6013_REST_CREDS WHERE PROPERTY_ACTIVE = 'Y' ", True)
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.RESTCreds.End
+
+Program.Sub.ReadOutputFile.Start
+F.Intrinsic.Control.Try
+V.Local.iCnt.Declare(Long)
+V.Local.iCnt2.Declare(Long)
+V.Local.iCnt3.Declare(Long)
+V.Local.iSel.Declare(Long)
+V.Local.iDateCnt.Declare(Long)
+V.Local.iDupCnt.Declare(Long)
+V.Local.iFileCnt.Declare(Long)
+V.Local.sFile.Declare(String)
+V.Local.sFileSplit.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sFolderPath.Declare(String)
+V.Local.sFileList.Declare(String)
+V.Local.sCompletedFolder.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sFileDate.Declare(String)
+V.Local.sFileName.Declare(String)
+V.Local.sFileDateSplit.Declare(String)
+V.Local.sFileTime.Declare(String)
+V.Local.sFileDateTime.Declare(String)
+V.Local.dFileDate.Declare(String)
+V.Local.sTime.Declare(String)
+V.Local.sSelected.Declare(String)
+V.Local.sDupFileName.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sDupFile.Declare(String)
+V.Local.sRet2.Declare(String)
+
+'build the folder path for the output files
+F.Intrinsic.String.Build("{0}\Process_Output\*.output", V.Caller.FilesDir, V.Local.sFolderPath)
+'check the folder location for output files
+F.Intrinsic.File.GetFileList(V.Local.sFolderPath,V.Local.sFileList)
+F.Intrinsic.Control.If(v.Local.sFileList,<>, "")
+	F.Intrinsic.String.Split(V.Local.sFileList,":", v.Local.sFileList)
+	
+	F.Intrinsic.Control.If(V.DataTable.dtListDir.Exists)
+		F.Data.DataTable.Close("dtListDir")
+	F.Intrinsic.Control.EndIf
+	F.Data.DataTable.Create("dtListDir", True)
+	F.Data.DataTable.AddColumn("dtListDir", "FILE", "STRING")
+	F.Data.DataTable.AddColumn("dtListDir", "DATETIME", "STRING")
+	F.Data.DataTable.AddColumn("dtListDir", "DELETE", "STRING")
+	
+	F.Intrinsic.Control.For(v.Local.iDateCnt,V.Local.sFileList.LBound, V.Local.sFileList.UBound,1)
+		F.Intrinsic.String.Replace(v.Local.sFileList(V.Local.iDateCnt), ".output", "", v.Local.sFileName)
+		F.Intrinsic.String.Split(v.Local.sFileName, "_", V.Local.sFileDateSplit)
+		V.Local.sFileDate.Set(V.Local.sFileDateSplit(1))
+		F.Intrinsic.String.Split(V.Local.sFileDate, " ", V.Local.sFileTime)
+		V.Local.dFileDate.Set(V.Local.sFileTime(0))
+		V.Local.sTime.Set(V.Local.sFileTime(1))
+		F.Intrinsic.String.Build("{0} {1}", V.Local.dFileDate, V.Local.sTime, V.Local.sFileDateTime)
+		F.Data.DataTable.AddRow("dtListDir", "FILE", V.Local.sFileList(v.Local.iDateCnt).Trim, "DATETIME", V.Local.sFileDateTime)
+	F.Intrinsic.Control.Next(v.Local.iDateCnt)
+	
+	F.Intrinsic.Control.For(V.Local.iDateCnt, 0, V.DataTable.dtListDir.RowCount--,1)
+		V.Local.sDupFileName.Set(V.DataTable.dtListDir(v.Local.iDateCnt).FILE!FieldValTrim)
+		V.Global.dFileDate.Set(V.DataTable.dtListDir(V.Local.iDateCnt).DATETIME!FieldVal)
+		F.Intrinsic.String.Split(V.Local.sDupFileName,"_", V.Local.sFileName)
+		F.Intrinsic.String.Build("FILE LIKE '%{0}%'", v.Local.sFileName.Trim, V.Local.sFilter)
+		F.Data.DataTable.Select("dtListDir",V.Local.sFilter, V.Local.sSelected)
+		F.Intrinsic.Control.If(V.Local.sSelected,<>,"")
+			F.Intrinsic.String.Split(V.Local.sSelected,"*!*", V.Local.sSelected)
+			F.Intrinsic.Control.For(V.Local.iDupCnt,V.Local.sSelected.LBound, v.Local.sSelected.UBound,1)
+				v.Local.iSel.Set(V.Local.sSelected(V.Local.iDupCnt))
+				V.Local.dFileDate.Set(V.DataTable.dtListDir(V.Local.iSel).DATETIME!FieldVal)
+				F.Intrinsic.Control.If(V.Global.dFileDate,>,V.Local.dFileDate)
+					F.Data.DataTable.SetValue("dtListDir", V.Local.iSel, "DELETE", "Y")
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Next(V.Local.iDupCnt)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iDateCnt)
+
+	
+	F.Intrinsic.Control.For(V.Local.iDupCnt,0,V.DataTable.dtListDir.RowCount--,1)
+		F.Intrinsic.Control.If(V.DataTable.dtListDir(V.Local.iDupCnt).DELETE!FieldValTrim,=, "Y")
+			V.Local.sFileName.Set(V.DataTable.dtListDir(V.Local.iDupCnt).FILE!FieldValTrim)
+			F.Intrinsic.String.Build("{0}\Process_Output\{1}", V.Caller.FilesDir, V.Local.sFileName.Trim, V.Local.sDupFile)
+			F.Intrinsic.File.DeleteFile(V.Local.sDupFile)
+			F.Data.DataTable.DeleteRow("dtListDir", V.Local.iDupCnt)
+			F.Data.DataTable.AcceptChanges("dtListDir")
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iDupCnt)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.File.GetFileList(V.Local.sFolderPath,V.Local.sFileList)
+F.Intrinsic.Control.If(v.Local.sFileList,<>, "")
+
+	
+	F.Intrinsic.String.Split(V.Local.sFileList,":", v.Local.sFileList)
+	'loop through the folder location
+	F.Intrinsic.Control.For(V.Local.iFileCnt,V.Local.sFileList.LBound, V.Local.sFileList.UBound,1)
+		
+		V.Global.sRESTError.Set("N")
+		f.Intrinsic.String.Build("{0}\Process_Output\{1}", V.Caller.FilesDir, V.Local.sFileList(V.Local.iFileCnt), V.Local.sFile)
+		V.Global.sFile.Set(V.Local.sFileList(V.Local.iFileCnt))
+		F.Intrinsic.String.Split(V.Local.sFileList(V.Local.iFileCnt),".", V.Local.sFileName)
+		F.Intrinsic.String.Split(V.Local.sFileName,"_",V.Global.sPartNo)
+		V.Global.sTCPN.Set(v.Global.sPartNo(0))
+		V.Global.sFilePath.Set(V.Local.sFile)
+	
+		F.Intrinsic.File.FileToStringArray(V.Local.sFile, V.ASCII.10, V.Local.sFileSplit)
+		
+		F.Intrinsic.Control.If(V.DataTable.dtFileInfo.Exists)
+			F.Data.DataTable.Close("dtFileInfo")
+		F.Intrinsic.Control.EndIf
+		
+		F.Data.DataTable.Create("dtFileInfo", True)
+		F.Data.DataTable.AddColumn("dtFileInfo", "Header", "String")
+		F.Data.DataTable.AddColumn("dtFileInfo", "PartInfo", "String")
+		
+		'check to see that the file contents are not blank	
+		F.Intrinsic.Control.If(V.Local.sFileSplit,<>,"")	
+			F.Intrinsic.Control.If(V.Caller.Hook,>,1000000)
+				F.Intrinsic.String.Build("Importing {0} Part Information...", V.Global.sFile.Trim, V.Local.sMsg)
+				F.Intrinsic.UI.InvokeWaitDialog(V.Local.sMsg, "Please Wait")
+			F.Intrinsic.Control.EndIf
+			'loop through the records to find the headers and the part information
+			F.Intrinsic.Control.For(V.Local.iCnt,0,1,1)
+				F.Intrinsic.Control.If(V.Local.iCnt,=,0)
+					F.Intrinsic.String.Split(V.Local.sFileSplit(V.Local.iCnt),"|", V.Global.sHeaders)
+					F.Intrinsic.Control.For(V.Local.iCnt2,V.Global.sHeaders.LBound,V.Global.sHeaders.UBound,1)
+						F.Data.DataTable.AddRow("dtFileInfo", "Header", V.Global.sHeaders(V.Local.iCnt2).Trim)
+					F.Intrinsic.Control.Next(V.Local.iCnt2)
+				F.Intrinsic.Control.Else
+					F.Intrinsic.String.Split(V.Local.sFileSplit(V.Local.iCnt),"|",V.Global.sPartInfo)
+					F.Intrinsic.Control.For(V.Local.iCnt3, V.Global.sPartInfo.LBound, V.Global.sPartInfo.UBound,1)
+						F.Data.DataTable.SetValue("dtFileInfo", V.Local.iCnt3, "PartInfo", V.Global.sPartInfo(V.Local.iCnt3).Trim)
+					F.Intrinsic.Control.Next(V.Local.iCnt3)
+				F.Intrinsic.Control.EndIf
+			
+			F.Intrinsic.Control.Next(V.Local.iCnt)
+			
+			'callsub to pull mapping information
+			F.Intrinsic.Control.CallSub(FieldMappingData)
+			
+			V.Global.sRESTError.Set("N")
+			F.Intrinsic.Control.CallSub(RESTCall)
+		F.Intrinsic.Control.Else
+			V.Global.sReadError.Set("Y")
+			F.Intrinsic.String.Build("Output file corrupt or is formatted incorrectly. File Name: {0}", V.Global.sFile, V.Global.sErrorMessage)
+			F.Intrinsic.Control.CallSub(LogError)	
+		F.Intrinsic.Control.EndIf
+	
+		F.Intrinsic.UI.CloseWaitDialog
+	F.Intrinsic.Control.Next(V.Local.iFileCnt)
+F.Intrinsic.Control.Else
+	F.Intrinsic.Control.CallSub(Form_Unload)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}. File Name: {3}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sFile, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.ReadOutputFile.End
+
+Program.Sub.RESTCall.Start
+F.Intrinsic.Control.Try
+V.Local.iCnt.Declare(String)
+V.Local.iRet.Declare(String)
+V.Local.sClientId.Declare(String)
+V.Local.sClientSecret.Declare(String)
+V.Local.sOtherHeaders.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sMessageId.Declare(String)
+V.Local.sStatus.Declare(String)
+V.Local.sErrorCode.Declare(String)
+V.Local.sDataPacket.Declare(String)
+V.Local.sNotURL.Declare(String)
+V.Local.sJSON1.Declare(String)
+V.Local.sJSON2.Declare(string)
+V.Local.sJSON3.Declare(String)
+V.Local.sJSON4.Declare(String)
+V.Local.sOutputFile.Declare(String)
+V.Local.sCompletedFolder.Declare(String)
+V.Local.sCert.Declare(String)
+V.Local.sErrorFileFolder.Declare(String)
+V.Local.sSelected.Declare(String)
+V.Local.sCertKey.Declare(String)
+
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CLIENT_ID' ", V.Local.sSelected)
+V.Local.sClientId.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CLIENT_SECRET' ", V.Local.sSelected)
+V.Local.sClientSecret.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Intrinsic.String.Concat(V.Local.sClientId,V.Ambient.NewLine,V.Local.sClientSecret,V.Local.sOtherHeaders)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CERT' ", V.Local.sSelected)
+V.Local.sCert.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'CERT_KEY' ", V.Local.sSelected)
+V.Local.sCertKey.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtRESTCreds", "PROPERTY_NAME = 'NOTIFICATION_URL' ", V.Local.sSelected)
+V.Local.sNotURL.Set(V.DataTable.dtRESTCreds(V.Local.sSelected.Long).PROPERTY_VALUE!FieldValTrim)
+
+F.Data.DataTable.Select("dtFileInfo", "HEADER LIKE '%MESSAGE_ID%'",V.Local.iRet)
+V.Local.sMessageId.Set(V.DataTable.dtFileInfo(V.Local.iRet).PartInfo!FieldValTrim)
+
+F.Data.DataTable.Select("dtFileInfo", "HEADER LIKE '%TCPN%'", V.Local.iRet)
+V.Local.sPart.Set(V.DataTable.dtFileInfo(V.Local.iRet).PartInfo!FieldvalTrim)
+F.Intrinsic.Control.If(V.Local.sPart,=,"")
+	V.Local.sPart.Set(V.Global.sTCPN.Trim)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Global.sRESTError,=,"Y")
+	F.Intrinsic.Control.If(V.Global.sRetry,=,"Y")
+		V.Local.sStatus.Set("ERROR")
+		V.Local.sErrorCode.Set("RETRY")
+		
+	F.Intrinsic.Control.Else
+		V.Local.sStatus.Set("ERROR")
+		V.Local.sErrorCode.Set("NORETRY")
+		F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\ErroredFiles\{1}", V.Caller.FilesDir, V.Global.sFile, V.Local.sErrorFileFolder)
+		F.Intrinsic.File.MoveFile(V.Global.sFilePath, V.Local.sErrorFileFolder, V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\RESTOutput\RestErrorResult.txt", V.Caller.FilesDir, V.Local.sOutputFile)
+	F.Intrinsic.String.Build(""tcpn" : "{0}",", v.Local.sPart.Trim, V.Local.sJSON1)
+	F.Intrinsic.String.Build(" "messageId" : "{0}", ", V.Local.sMessageId, V.Local.sJSON2)
+	F.Intrinsic.String.Build(" "status" : "{0}", ", V.Local.sStatus.Trim, V.Local.sJSON3)
+	F.Intrinsic.String.Build(" "error": {{0}{1}"errorDetails" : "{2}", {0}{1}"errorCode" : "{3}"{0}{1}} ", V.Ambient.NewLine, V.Ambient.Tab, V.Global.sErrorDetails.Trim, V.Local.sErrorCode.Trim, V.Local.sJSON4)
+	F.Intrinsic.String.Build("{{0}{1}{0}{2}{0}{3}{0}{4}{0}}", V.Ambient.NewLine,V.Local.sJSON1,V.Local.sJSON2, V.Local.sJSON3, V.Local.sJSON4,V.Local.sDataPacket)
+	
+	'adding the properties 
+	Function.Communication.REST.SetProperty("HTTPMethod","POST")
+	Function.Communication.REST.SetProperty("POSTData",V.Local.sDataPacket)
+	Function.Communication.REST.SetProperty("contentType","application/json")
+	
+	'Adding the OtherHeaders properties
+	Function.Communication.REST.SetProperty("OtherHeaders",V.Local.sOtherHeaders)
+	'Have to pass certstoretype,cert path, cert password, Subject(If any)
+'	f.Intrinsic.String.Build("{0}\Cert\GlobalShop-QA.pfx", V.Caller.FilesDir, V.Local.sCert)
+	'PROD Cert 
+'	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", "\\GSSDB\Apps\Global\FILES\Cert\GlobalShop-Prod.pfx", "GlobalShop2020Prod", "*")  
+	'QA Cert
+'	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", "\\GSSDB\Apps\Global\FILES\Cert\GlobalShop-QA.pfx", "GlobalShop2020QA", "*")  
+	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", V.Local.sCert.Trim, V.Local.sCertKey, "*")  
+	F.Communication.REST.SetProperty("LocalFile", V.Local.sOutputFile)
+	'PROD URL
+	'F.Communication.REST.Post("https://svc-gss-gateway.connect.te.com:443/sys-cpr-gs-parts/api/v1/parts/notification")
+	'QA url
+'	F.Communication.REST.Post("https://svc-gss-gateway-qa.connect.te.com:443/sys-cpr-gs-parts/api/v1/parts/notification")
+	F.Communication.REST.Post(V.Local.sNotURL.Trim)
+F.Intrinsic.Control.Else
+	V.Local.sStatus.Set("SUCCESS")
+	F.Intrinsic.String.Build(""tcpn" : "{0}",", v.Local.sPart.Trim, V.Local.sJSON1)
+	F.Intrinsic.String.Build(" "messageId" : "{0}", ", V.Local.sMessageId, V.Local.sJSON2)
+	F.Intrinsic.String.Build(" "status" : "{0}" ", V.Local.sStatus.Trim, V.Local.sJSON3)
+	F.Intrinsic.String.Build("{{0}{1}{0}{2}{0}{3}{0}}", V.Ambient.NewLine,V.Local.sJSON1,V.Local.sJSON2, V.Local.sJSON3, V.Local.sDataPacket)
+	
+	F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\RESTOutput\RestSuccessResult.txt", V.Caller.FilesDir, V.Local.sOutputFile)
+	'adding the properties 
+	Function.Communication.REST.SetProperty("HTTPMethod","POST")
+	Function.Communication.REST.SetProperty("POSTData",V.Local.sDataPacket)
+	Function.Communication.REST.SetProperty("contentType","application/json")
+
+	'Adding the OtherHeaders properties
+	Function.Communication.REST.SetProperty("OtherHeaders",V.Local.sOtherHeaders)
+	'Have to pass certstoretype,cert path, cert password, Subject(If any)
+'	f.Intrinsic.String.Build("{0}\Cert\GlobalShop-QA.pfx", V.Caller.FilesDir, V.Local.sCert)
+	'PROD Cert 
+'	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", "\\GSSDB\Apps\Global\FILES\Cert\GlobalShop-Prod.pfx", "GlobalShop2020Prod", "*")  
+	'QA Cert
+'	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", "\\GSSDB\Apps\Global\FILES\Cert\GlobalShop-QA.pfx", "GlobalShop2020QA", "*") 
+
+
+	F.Communication.REST.SetProperty("SSLcert","cstPFXFile", V.Local.sCert.Trim, V.Local.sCertKey, "*")  
+	F.Communication.REST.SetProperty("LocalFile", V.Local.sOutputFile)
+	'PROD URL
+'	F.Communication.REST.Post("https://svc-gss-gateway.connect.te.com:443/sys-cpr-gs-parts/api/v1/parts/notification")
+	'QA url
+	'F.Communication.REST.Post("https://svc-gss-gateway-qa.connect.te.com:443/sys-cpr-gs-parts/api/v1/parts/notification")
+	F.Communication.REST.Post(V.Local.sNotURL.Trim)
+	
+	
+	
+	F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\CompletedFiles\{1}", V.Caller.FilesDir,  V.Global.sFile, V.Local.sCompletedFolder)
+	F.Intrinsic.File.CopyFile(V.Global.sFilePath, V.Local.sCompletedFolder)
+	F.Intrinsic.File.DeleteFile(V.Global.sFilePath)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}. File Name: {3}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sFile, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.RESTCall.End
+
+Program.Sub.FieldMappingData.Start
+F.Intrinsic.Control.Try
+V.Local.bHdrMatch.Declare(Boolean)
+V.Local.bMatch.Declare(Boolean)
+V.Local.iLocCnt.Declare(Long)
+V.Local.iMapCnt.Declare(Long)
+V.Local.iRowCnt.Declare(Long)
+V.Local.iColCnt.Declare(Long)
+V.Local.iCnt.Declare(Long)
+V.Local.iCnt2.Declare(Long)
+V.Local.iCnt3.Declare(Long)
+V.Local.iCoCodeCnt.Declare(Long)
+V.Local.iLength.Declare(Long)
+V.Local.iStartPos.Declare(Long)
+V.Local.iSelected.Declare(Long)
+V.Local.sFileHdr.Declare(String)
+V.Local.sHdrMatch.Declare(String)
+V.Local.sSql.Declare(String)
+V.Local.sFormula.Declare(String)
+V.Local.sInvCol.Declare(String)
+V.Local.sFileCol.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sDataRet.Declare(String)
+V.Local.sFileColValue.Declare(String)
+V.Local.sFormFunc.Declare(String)
+V.Local.sConcat.Declare(String)
+V.Local.sConcatVal.Declare(String)
+V.Local.sPartCol.Declare(String)
+V.Local.sShortPart.Declare(String)
+V.Local.sLongPart.Declare(String)
+V.Local.sLongPartRev.Declare(String)
+V.Local.sSubString.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sInventoryPart.Declare(String)
+V.Local.sCoCode.Declare(String)
+V.Local.sCoCodeCon.Declare(String)
+V.Local.sShortPartRev.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sRev.Declare(String)
+V.Local.sMapper.Declare(String)
+V.Local.sLoc.Declare(String)
+V.Local.sExists.Declare(String)
+V.Local.sCols.Declare(String)
+V.Local.sRows.Declare(String)
+V.Local.sSelected.Declare(String)
+V.Local.sFlagInactive.Declare(String)
+V.Local.sPrevPartRev.Declare(String)
+V.Local.sPrevPart.Declare(String)
+V.Local.sPrevRev.Declare(String)
+V.Local.sInactiveFlag.Declare(String)
+V.Local.sRet2.Declare(String)
+
+'query the mapping table to get the cocodes that have been mapped
+F.ODBC.Connection!conCom.ExecuteAndReturn("SELECT DISTINCT COCODE FROM GCG_6013_PART_MAP ORDER BY COCODE", V.Local.sCoCode)
+F.Intrinsic.Control.If(V.Local.sCoCode,<>,"")
+	F.Intrinsic.String.Split(V.Local.sCoCode,"#$#", V.Local.sCoCode)
+	F.Intrinsic.Control.For(V.Local.iCoCodeCnt, V.Local.sCoCode.LBound, V.Local.sCoCode.UBound, 1)
+		V.Global.sCoCode.Set(V.Local.sCoCode(V.Local.iCoCodeCnt))
+		F.Intrinsic.Control.If(V.DataTable.dtPartMap.Exists)
+			F.Data.DataTable.Close("dtPartMap")
+		F.Intrinsic.Control.EndIf
+		
+		F.Data.DataTable.Create("dtPartMap", True)
+		F.Data.DataTable.AddColumn("dtPartMap", "INV_FIELD", "STRING")
+		F.Data.DataTable.AddColumn("dtPartMap", "FORMULA", "STRING")
+		F.Data.DataTable.AddColumn("dtPartMap", "Data", "String")
+		F.Data.DataTable.AddColumn("dtPartMap", "DeleteField", "String")
+		F.Data.DataTable.AddColumn("dtPartMap", "Location", "String")
+		F.ODBC.Connection!con.Close
+		
+		F.Intrinsic.String.Build("GLOBAL_{0}", V.Local.sCoCode(V.Local.iCoCodeCnt), V.Local.sCoCodeCon)
+	
+		F.ODBC.Connection!con.OpenConnection(V.Local.sCoCodeCon, Master, master)
+	
+
+		'Check to see if there are any phantom records in inv_lxr
+		F.ODBC.Connection!con.ExecuteAndReturn("SELECT * FROM INV_LXR WHERE GSS_PART NOT IN (SELECT PART FROM V_INVENTORY_MSTR)", V.Local.sRet2)
+		F.Intrinsic.Control.If(V.Local.sRet2.Trim,<>,"")
+			'add query for deleting phantom inv_lxr records
+			F.ODBC.Connection!con.Execute("DELETE INV_LXR LP WHERE NOT EXISTS (SELECT PART FROM V_INVENTORY_MSTR A WHERE A.PART = LP.GSS_PART)")
+		F.Intrinsic.Control.EndIf
+		
+		F.Intrinsic.Control.If(V.DataTable.dtLoc.Exists)
+			F.Data.DataTable.Close("dtLoc")
+		F.Intrinsic.Control.EndIf
+		
+		'create the data table for the existing locations in the company code
+		F.Data.DataTable.CreateFromSQL("dtLoc", "con", "SELECT LOCATION FROM V_LOCATIONS", True)
+		F.Data.DataTable.AddColumn("dtLoc", "PART", "STRING")
+		F.Data.DataTable.AddColumn("dtLoc", "REV", "STRING")
+		F.Data.DataTable.AddColumn("dtLoc", "EXISTS", "STRING")
+		F.Data.DataTable.AddColumn("dtLoc", "MAPPER", "STRING")
+		'add previous revision column for flag to copy previous revision data
+		F.Data.DataTable.AddColumn("dtLoc", "PREVREV_FLAG", "BOOLEAN")
+		F.Data.DataTable.AddColumn("dtLoc", "PREV_PART_REV", "STRING")
+		F.Data.DataTable.AddColumn("dtLoc", "PREV_PART", "STRING")
+		F.Data.DataTable.AddColumn("dtLoc", "PREV_REV", "STRING")
+		
+		F.Intrinsic.Control.For(V.Local.iLocCnt,0, V.DataTable.dtLoc.RowCount--,1)
+			F.Intrinsic.String.Build("SELECT INV_FIELD, FORMULA FROM GCG_6013_PART_MAP WHERE COCODE = '{0}'", V.Local.sCoCode(V.Local.iCoCodeCnt), V.Local.sSql)
+			F.ODBC.Connection!conCom.ExecuteAndReturn(V.Local.sSql, V.Local.sRet)
+			F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+				F.Intrinsic.String.Split(V.Local.sRet,"#$#", V.Local.sRows)
+				F.Intrinsic.Control.For(V.Local.iRowCnt,V.Local.sRows.LBound, V.Local.sRows.UBound,1)
+					F.Intrinsic.String.Split(V.Local.sRows(V.Local.iRowCnt), "*!*", V.Local.sCols)
+					F.Data.DataTable.AddRow("dtPartMap", "INV_FIELD", V.Local.sCols(0), "FORMULA", V.Local.sCols(1), "LOCATION", V.DataTable.dtLoc(V.Local.iLocCnt).LOCATION!FieldValTrim)
+				F.Intrinsic.Control.Next(V.Local.iRowCnt)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Next(V.Local.iLocCnt)
+		
+		F.Intrinsic.Control.For(V.Local.iCnt,0, V.DataTable.dtPartMap.RowCount--,1)
+			V.Local.sFormula.Set(V.DataTable.dtPartMap(V.Local.iCnt).FORMULA!FieldValTrim)
+			V.Local.sInvCol.Set(V.DataTable.dtPartMap(V.Local.iCnt).INV_FIELD!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sFormula,"=", True, V.Local.bMatch)
+			F.Intrinsic.Control.If(V.Local.bMatch,=,True)
+				F.Intrinsic.String.Split(V.Local.sFormula,"=", V.Local.sFormula)
+				F.Intrinsic.String.Split(V.Local.sFormula(1),"(",V.Local.sFormFunc)
+		
+				F.Intrinsic.Control.SelectCase(v.Local.sFormFunc(0))
+				'check to see if they are using the substring formula - =SUBSTRING([Column], [start index (first char is at position 1)], [Length])
+				'then use the formula to determine if the columns are in the datatable. then pull the required data to build the information
+				F.Intrinsic.Control.Case("SUBSTRING")
+					F.Intrinsic.String.Split(V.Local.sFormFunc(1),",",V.Local.sSubString)
+					V.Local.sFileCol.Set(V.Local.sSubString(0))
+					V.Local.iStartPos.Set(V.Local.sSubString(1).Long)
+					F.Intrinsic.String.Replace(V.Local.sSubString(2), ")","",v.Local.iLength.String)
+				
+					F.Intrinsic.String.Build("HEADER LIKE '*{0}*'",V.Local.sFileCol.Trim, V.Local.sFilter)
+					F.Data.DataTable.Select("dtFileInfo", V.Local.sFilter, V.Local.sDataRet)
+					F.Intrinsic.Control.If(V.Local.sDataRet,<>,"")
+						V.Local.sFileColValue.Set(V.DataTable.dtFileInfo(V.Local.sDataRet.Long).PartInfo!FieldValTrim)
+						f.Intrinsic.Control.If(v.Local.iStartPos,=,1)
+							F.Intrinsic.String.Left(V.Local.sFileColValue,V.Local.iLength, V.Local.sFileColValue)
+						F.Intrinsic.Control.Else
+							F.Intrinsic.String.Right(V.Local.sFileColValue, V.Local.iLength, V.Local.sFileColValue)
+						f.Intrinsic.Control.EndIf
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sFileColValue)
+					F.Intrinsic.Control.EndIf
+				
+				F.Intrinsic.Control.Case("RIGHT")
+				'check to see if they are using the right formula - = RIGHT([Colum_Name], Value)
+				'then use the formula to determine if the columns are in the datatable. then pull the required data to build the information
+					F.Intrinsic.String.Split(V.Local.sFormFunc(1),",",V.Local.sFileCol)
+					F.Intrinsic.String.Build("HEADER LIKE '*{0}*'",V.Local.sFileCol(0).Trim, V.Local.sFilter)
+					F.Intrinsic.String.Split(V.Local.sFileCol(1),")", V.Local.iLength.String)
+				
+					F.Data.DataTable.Select("dtFileInfo", V.Local.sFilter, V.Local.sDataRet)
+					F.Intrinsic.Control.If(V.Local.sDataRet,<>,"***NORETURN***")
+						V.Local.sFileColValue.Set(V.DataTable.dtFileInfo(V.Local.sDataRet.Long).PartInfo!FieldValTrim)
+						F.Intrinsic.String.Right(V.Local.sFileColValue, V.Local.iLength, V.Local.sFileColValue)
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sFileColValue)
+					F.Intrinsic.Control.EndIf
+				F.Intrinsic.Control.Case("LEFT")
+				'check to see if they are using the left formula  - = LEFT([Colum_Name], Value)
+				'then use the formula to determine if the columns are in the datatable. then pull the required data to build the information
+					F.Intrinsic.String.Split(V.Local.sFormFunc(1),",",V.Local.sFileCol)
+					F.Intrinsic.String.Build("HEADER LIKE '*{0}*'",V.Local.sFileCol(0).Trim, V.Local.sFilter)
+					F.Intrinsic.String.Split(V.Local.sFileCol(1),")", V.Local.iLength.String)
+				
+					F.Data.DataTable.Select("dtFileInfo", V.Local.sFilter, V.Local.sDataRet)
+					F.Intrinsic.Control.If(V.Local.sDataRet,<>,"***NORETURN***")
+						V.Local.sFileColValue.Set(V.DataTable.dtFileInfo(V.Local.sDataRet.Long).PartInfo!FieldValTrim)
+						F.Intrinsic.String.Left(V.Local.sFileColValue, V.Local.iLength, V.Local.sFileColValue)
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sFileColValue)
+					F.Intrinsic.Control.EndIf
+				F.Intrinsic.Control.CaseElse
+				'the other case will be for the concat function = [Column_Name] & [Column_Name]
+				'then use the formula to determine if the columns are in the datatable. then pull the required data to build the information
+					F.Intrinsic.String.Split(V.Local.sFormula(1),"&",V.Local.sFileCol)
+					F.Intrinsic.Control.For(V.Local.iCnt2, V.Local.sFileCol.LBound, V.Local.sFileCol.UBound,1)
+						F.Intrinsic.Control.If(V.Local.iCnt2,=,0)
+							F.Intrinsic.String.Replace(V.Local.sFileCol(V.Local.iCnt2), "(", "*", V.Local.sConcat)
+							F.Intrinsic.String.Build("{0}*", V.Local.sConcat.Trim, V.Local.sConcat)
+						F.Intrinsic.Control.Else
+							F.Intrinsic.String.Replace(V.Local.sFileCol(V.Local.iCnt2),")", "*",V.Local.sConcat)
+							F.Intrinsic.String.Build("*{0}", V.Local.sConcat.Trim, V.Local.sConcat)
+						F.Intrinsic.Control.EndIf
+					
+						F.Intrinsic.String.Build("HEADER LIKE '{0}'",V.Local.sConcat, V.Local.sFilter)
+						F.Data.DataTable.Select("dtFileInfo", V.Local.sFilter, V.Local.sDataRet)
+						V.Local.sFileColValue.Set(V.DataTable.dtFileInfo(V.Local.sDataRet.Long).PartInfo!FieldValTrim)
+					
+						F.Intrinsic.Control.If(V.Local.sInvCol.Trim,=,"INVENTORY_MSTR.PART")
+		
+							F.Intrinsic.Control.If(V.Local.iCnt2,=,0)
+								V.Local.sLongPart.Set(V.Local.sFileColValue)
+								F.Intrinsic.String.Len(V.Local.sLongPart,V.Local.iLength)
+								F.Intrinsic.Control.If(V.Local.iLength,<,17)
+									F.Intrinsic.String.RPad(V.Local.sLongPart," ", 17, V.Local.sLongPart)
+								F.Intrinsic.Control.EndIf
+							F.Intrinsic.Control.Else
+								V.Local.sLongPartRev.Set(V.Local.sFileColValue)
+							F.Intrinsic.Control.EndIf
+						
+						F.Intrinsic.Control.Else
+							F.Intrinsic.Control.If(V.Local.iCnt2,=,0)
+							V.Local.sConcatVal.Set(V.Local.sFileColValue)
+							F.Intrinsic.Control.Else
+								F.Intrinsic.String.Build("{0}{1}", V.Local.sConcatVal, V.Local.sFileColValue,V.Local.sConcatVal)
+							F.Intrinsic.Control.EndIf
+					
+						F.Intrinsic.Control.EndIf	
+					F.Intrinsic.Control.Next(V.Local.iCnt2)
+		
+					F.Intrinsic.Control.If(V.Local.sInvCol.Trim,=,"INVENTORY_MSTR.PART")
+				
+						V.Local.sLoc.Set(V.DataTable.dtPartMap(V.Local.iCnt).LOCATION!FieldValTrim)
+						V.Global.sLoc.Set(V.Local.sLoc.Trim)
+						F.Intrinsic.String.Build("LOCATION = '{0}'", V.Local.sLoc.Trim, V.Local.sFilter)
+						F.Data.DataTable.Select("dtLoc", V.Local.sFilter, V.Local.sSelected)
+
+						'query inv_lxr to see if the long part exists in GSS
+						F.Intrinsic.String.Build("SELECT GSS_PART FROM INV_LXR WHERE DISPLAY_PART = '{0}' AND DISPLAY_REV = '{1}'", V.Local.sLongPart.Trim, V.Local.sLongPartRev.Trim, V.Local.sSql)
+						F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSql, V.Local.sRet)
+						'if the part exists
+						F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+						'	V.Global.sPartExists.Set("Y")
+							F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sRet.Trim)
+							F.Intrinsic.String.IsInString(v.Local.sRet,"||", True, V.Local.bMatch)
+							F.Intrinsic.Control.If(v.Local.bMatch,=,True)
+								F.Intrinsic.String.RPad(V.Local.sRet," ", 20, V.Local.sRet)
+								F.Intrinsic.String.Left(V.Local.sRet,17, V.Local.sPart)
+								F.Intrinsic.String.Right(V.Local.sRet,3,V.Local.sRev)
+								
+								F.Intrinsic.String.Build("SELECT DISTINCT PART FROM V_INVENTORY_MSTR WHERE PART = '{0}' AND LOCATION = '{1}' ",V.Local.sRet.Trim, V.Local.sLoc.Trim,v.Local.sSql)
+								F.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSql, V.Local.sExists)
+								F.Intrinsic.Control.If(V.Local.sExists,<>,"")
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "EXISTS", "Y")
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART_REV", "", "PREVREV_FLAG", False, "PREV_PART", "", "PREV_REV", "")
+								F.Intrinsic.Control.Else
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "EXISTS", "N")
+				
+									
+									'check to see if the long part has a previous revision
+									F.Intrinsic.String.Build("SELECT TOP 1 A.GSS_PART FROM INV_LXR A LEFT JOIN V_INVENTORY_MSTR B ON A.GSS_PART = B.PART WHERE A.DISPLAY_PART = '{0}' AND B.LOCATION = '{1}' AND (B.FLAG_INACTIVE = 'N' OR B.FLAG_INACTIVE = '' OR B.FLAG_INACTIVE IS NULL) ORDER BY A.DISPLAY_REV DESC", V.Local.sLongPart.Trim, V.Local.sLoc.Trim, V.Local.sSql)
+									F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSql, V.Local.sPrevPartRev)
+									F.Intrinsic.Control.If(V.Local.sPrevPartRev.Trim,<>,"")
+										F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART_REV", V.Local.sPrevPartRev, "PREVREV_FLAG", True)
+										F.Intrinsic.String.Left(V.Local.sPrevPartRev, 17, V.Local.sPrevPart)
+										F.Intrinsic.String.Right(V.Local.sPrevPartRev, 3, V.Local.sPrevRev)
+										F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART", V.Local.sPrevPart, "PREV_REV", V.Local.sPrevRev)
+									F.Intrinsic.Control.Else
+										F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART_REV", "", "PREVREV_FLAG", False, "PREV_PART", "", "PREV_REV", "")
+									F.Intrinsic.Control.EndIf
+								F.Intrinsic.Control.EndIf
+									
+								F.Intrinsic.String.Build("SELECT DISTINCT USER60 FROM INV_EXTRA WHERE PART = '{0}' AND REV = '{1}' AND LOCATION = '{2}' ", V.Local.sPart.Trim, V.Local.sRev.Trim, V.Local.sLoc.Trim,V.Local.sSql)
+								F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSql, V.Local.sMapper)
+								F.Intrinsic.Control.If(V.Local.sMapper.Trim,=,"MAPPER")
+									V.Global.sMapper.Set(V.Local.sMapper.Trim)
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long,"PART", V.Local.sPart.Trim,"REV", V.Local.sRev.Trim, "MAPPER", V.Local.sMapper.Trim)
+								F.Intrinsic.Control.Else
+									V.Global.sMapper.Set(V.Local.sMapper.Trim)
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long,"PART", V.Local.sPart.Trim,"REV", V.Local.sRev.Trim, "MAPPER", "")
+								F.Intrinsic.Control.EndIf
+								
+							F.Intrinsic.Control.EndIf
+						'if the part doesn't exist
+						F.Intrinsic.Control.Else
+							F.Intrinsic.String.RPad(V.Local.sLongPart," ", 17, V.Local.sShortPart)
+							F.Intrinsic.String.RPad(v.Local.sLongPartRev, " ",3, V.Local.sShortPartRev)
+							F.Intrinsic.String.Build("{0}{1}", V.Local.sShortPart, V.Local.sShortPartRev, v.Local.sInventoryPart)
+							
+							F.Intrinsic.String.Build("SELECT DISTINCT PART FROM V_INVENTORY_MSTR WHERE PART = '{0}' AND LOCATION = '{1}' ",V.Local.sInventoryPart, V.Local.sLoc.Trim, v.Local.sSql)
+							F.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSql, v.Local.sRet)
+							'check to see if a short part exists. If it does exist
+							F.Intrinsic.Control.If(v.Local.sRet,<>,"")
+							'	V.Global.sPartExists.Set("Y")
+								F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sRet.Trim)
+								F.Intrinsic.String.Left(v.Local.sRet, 17, V.Local.sPart)
+								F.Intrinsic.String.RPad(V.Local.sPart, " ",17, V.Local.sPart)
+								F.Intrinsic.String.Right(V.Local.sRet, 3, V.Local.sRev)
+								F.Intrinsic.String.Build("SELECT DISTINCT USER60 FROM INV_EXTRA WHERE PART = '{0}' AND REV = '{1}' AND LOCATION = '{2}'", V.Local.sPart.Trim, V.Local.sRev.Trim, V.Local.sLoc.Trim, V.Local.sSql)
+								F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSql, V.Local.sMapper)
+								F.Intrinsic.Control.If(V.Local.sMapper.Trim,=,"MAPPER")
+									V.Global.sMapper.Set(V.Local.sMapper.Trim)
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PART", V.Local.sPart.Trim, "REV", V.Local.sRev.Trim, "EXISTS", "Y","MAPPER", V.Local.sMapper.Trim)
+								F.Intrinsic.Control.Else
+									V.Global.sMapper.Set(V.Local.sMapper.Trim)
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PART", V.Local.sPart.Trim, "REV", V.Local.sRev.Trim, "EXISTS", "Y","MAPPER", "")
+								F.Intrinsic.Control.EndIf
+								
+							'if the short part doesn't exist
+							F.Intrinsic.Control.Else
+								
+								'check to see if the short part has a previous revision
+								F.Intrinsic.String.Build("SELECT TOP 1 PART, LEFT(PART,17) AS OLD_PART, RIGHT(PART,3) AS OLD_REV FROM V_INVENTORY_MSTR WHERE PART LIKE '{0}%' AND LOCATION = '{1}' AND (FLAG_INACTIVE = 'N' OR FLAG_INACTIVE = '' OR FLAG_INACTIVE IS NULL) ORDER BY OLD_REV DESC", v.Local.sShortPart.Trim, V.Local.sLoc.Trim, V.Local.sSql)
+								F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSql, V.Local.sPrevPartRev)
+								F.Intrinsic.Control.If(V.Local.sPrevPartRev.Trim,<>,"")
+									F.Intrinsic.String.Split(v.Local.sPrevPartRev, "*!*", v.Local.sPrevPartRev)
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART_REV", V.Local.sPrevPartRev(0), "PREVREV_FLAG", True)
+									v.Local.sPrevPart.Set(v.Local.sPrevPartRev(1))
+									v.Local.sPrevRev.Set(V.Local.sPrevPartRev(2))
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART", V.Local.sPrevPart, "PREV_REV", V.Local.sPrevRev)
+								F.Intrinsic.Control.Else
+									F.Data.DataTable.SetValue("dtLoc", V.Local.sSelected.Long, "PREV_PART_REV", "", "PREVREV_FLAG", False, "PREV_PART", "", "PREV_REV", "")
+								F.Intrinsic.Control.EndIf
+								
+								F.Global.General.OverrideCompany(V.Global.sCoCode.Trim)
+								F.Global.Inventory.GetGSSPart(V.Local.sLongPart, V.Local.sLongPartRev, V.Local.sShortPart)
+								F.Intrinsic.String.IsInString(V.Local.sShortPart,"||", True, V.Local.bMatch)
+								F.Intrinsic.Control.If(v.Local.bMatch,=,True)
+									F.Intrinsic.String.RPad(V.Local.sShortPart," ", 20, V.Local.sShortPart)
+									F.Intrinsic.String.Left(V.Local.sShortPart,17, V.Local.sPart)
+									F.Intrinsic.String.Right(V.Local.sShortPart,3,V.Local.sRev)
+									F.Data.DataTable.SetValue("dtLoc", v.Local.sSelected.Long, "PART", V.Local.sPart.Trim, "REV", V.Local.sRev.Trim, "EXISTS", "N", "MAPPER", "")
+								F.Intrinsic.Control.Else
+									F.Intrinsic.String.Left(V.Local.sShortPart,17, V.Local.sPart)
+									F.Intrinsic.String.Right(V.Local.sShortPart,3,V.Local.sRev)
+									F.Data.DataTable.SetValue("dtLoc", v.Local.sSelected.Long, "PART", V.Local.sPart.Trim, "REV", V.Local.sRev.Trim, "EXISTS", "N", "MAPPER", "")
+								F.Intrinsic.Control.EndIf
+								V.Global.sMapper.Set("")
+								
+								F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sShortPart)
+								
+							F.Intrinsic.Control.EndIf
+						F.Intrinsic.Control.EndIf
+					F.Intrinsic.Control.Else
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sConcatVal)	
+					F.Intrinsic.Control.EndIf
+				
+				F.Intrinsic.Control.EndSelect
+			F.Intrinsic.Control.Else
+	
+				'if there is not a formula stored in the formula field, assume the column is a one to one relation and pull the data from the datatable
+				F.Intrinsic.String.Build("HEADER = '{0}'", V.Local.sFormula.Trim, V.Local.sFilter)
+				F.Data.DataTable.Select("dtFileInfo", V.Local.sFilter, V.Local.sDataRet)
+				F.Intrinsic.Control.If(V.Local.sDataRet,<>,"***NORETURN***")
+					V.Local.sFileColValue.Set(V.DataTable.dtFileInfo(V.Local.sDataRet.Long).PartInfo!FieldValTrim)
+					F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sFileColValue)
+				F.Intrinsic.Control.Else
+					'assuming the value is hard coded like for code source
+					V.Local.sFileColValue.Set(v.DataTable.dtPartMap(v.Local.iCnt).FORMULA!FieldValTrim)
+					
+					f.Intrinsic.Control.If(v.Local.sFileColValue,=,"**DO NOT CHANGE THIS VALUE**")
+						F.Intrinsic.Control.Next(V.Local.iCnt)
+					f.Intrinsic.Control.ElseIf(V.Local.sFileColValue,=,V.Local.sFormula.Trim)
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data",V.Local.sFileColValue)
+					F.Intrinsic.Control.Else
+						F.Data.DataTable.SetValue("dtPartMap", V.Local.iCnt, "Data", V.Local.sFileColValue)
+						f.Intrinsic.Control.EndIf
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.EndIf	
+		F.Intrinsic.Control.Next(V.Local.iCnt)
+		F.Intrinsic.Control.CallSub(PartCreation)
+	F.Intrinsic.Control.Next(V.Local.iCoCodeCnt)
+F.Intrinsic.Control.Else
+	V.Global.sReadError.Set("Y")
+	V.Global.sErrorMessage.Set("File Mappings have not been done for the company codes. Please map the file and try again.")
+	F.Intrinsic.Control.CallSub(LogError)	
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	V.Global.sRESTError.Set("Y")
+	F.Intrinsic.Control.CallSub(ErrorMessage, "ErrorNumber", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription, "Subroutine", V.Ambient.CurrentSubroutine, "UNATTENDED", V.Global.bUnattended, "Project", "6013", "ProjectTitle", "CPR Part Data Import", "Callback", "Form_UnLoad")
+F.Intrinsic.Control.EndTry
+Program.Sub.FieldMappingData.End
+
+Program.Sub.PartCreation.Start
+F.Intrinsic.Control.Try
+V.Local.bInString.Declare(Boolean)
+V.Local.iCnt.Declare(Long)
+V.Local.iLen.Declare(Long)
+V.Local.iLocCnt.Declare(Long)
+V.Local.iRet.Declare(Long)
+V.Local.fPrice.Declare(Float)
+V.Local.sColName.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sUM.Declare(String)
+V.Local.sFullDescription.Declare(String)
+V.Local.sDescription.Declare(String)
+V.Local.sLoc.Declare(String)
+V.Local.sPLDesc.Declare(String)
+V.Local.sPL.Declare(String)
+V.Local.sSourceCode.Declare(String)
+V.Local.sAltDesc1.Declare(String)
+V.Local.sAltDesc2.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sPartReleaseScript.Declare(String)
+V.Local.sPartReleaseFilePath.Declare(String)
+V.Local.sPartReleaseFile.Declare(String)
+V.Local.sPartReleaseData.Declare(String)
+V.Local.sTempPart.Declare(String)
+V.Local.sRev.Declare(String)
+V.Local.sSortCode.Declare(String)
+
+
+F.Intrinsic.Control.For(V.Local.iLocCnt, 0, V.DataTable.dtLoc.RowCount--,1)
+	V.Local.sLoc.Set(V.DataTable.dtLoc(V.Local.iLocCnt).LOCATION!FieldValTrim)
+	V.Global.sLoc.Set(V.Local.sLoc.Trim)
+	V.Global.sPartExists.Set(V.DataTable.dtLoc(V.Local.iLocCnt).EXISTS!FieldValTrim)
+
+	F.Intrinsic.String.Build("LOCATION = '{0}' ", V.Local.sLoc.Trim, V.Local.sFilter)
+	
+	F.Data.DataView.Create("dtPartMap", "dvPartMap", 22, V.Local.sFilter, "")
+	
+	F.Intrinsic.Control.For(V.Local.iCnt,0, V.DataView.dtPartMap!dvPartMap.RowCount--,1)
+		V.Local.sColName.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).INV_FIELD!FieldValTrim)
+		F.Intrinsic.Control.SelectCase(V.Local.sColName)
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.PART")
+				V.Local.sPart.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).Data!FieldValTrim)
+				F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.UM_INVENTORY")
+				V.Local.sUM.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).Data!FieldValTrim)
+				f.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.DESCRIPTION")
+				V.Local.sFullDescription.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).Data!FieldValTrim)
+				F.Intrinsic.String.Len(V.Local.sFullDescription,V.Local.iLen)
+				F.Intrinsic.Control.If(V.Local.iLen,>,30)
+					f.Intrinsic.String.Left(v.Local.sFullDescription,30,v.Local.sDescription)
+				F.Intrinsic.Control.Else
+					V.Local.sDescription.Set(V.Local.sFullDescription.Trim)	
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.PRODUCT_LINE")
+		
+				V.Local.sPLDesc.Set(V.DataTable.dtPartMap(V.Local.iCnt).Data!FieldValTrim)
+				F.Intrinsic.String.Build("SELECT DISTINCT PROD_LINE FROM V_PL_MASTER WHERE DESCR LIKE '%{0}%'", V.Local.sPLDesc.Trim, V.Local.sSQL)
+				F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+				F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+					V.Local.sPL.Set(V.Local.sRet.Trim)
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "Data", V.Local.sPL.Trim)
+				F.Intrinsic.Control.Else
+					V.Local.sPL.Set("ZZ")
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "Data", V.Local.sPL.Trim)
+				F.Intrinsic.Control.EndIf
+		'		f.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+		'		F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Case("INVENTORY_MST2.CODE_SOURCE")
+				V.Local.sSourceCode.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).FORMULA!FieldValTrim)
+				
+				F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+			
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.CODE_SORT")
+				V.Local.sSortCode.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).FORMULA!FieldValTrim)
+				F.Intrinsic.Control.If(V.Global.sPartExists,=,"Y")
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.AMT_PRICE")
+				v.Local.fPrice.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).FORMULA!FieldValTrim)
+				f.Intrinsic.Control.If(v.Local.fPrice,<>,"")
+					v.Local.fPrice.Set(0.00)
+				f.Intrinsic.Control.EndIf
+				f.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+					F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.LOCATION")
+				F.Data.DataView.SetValue("dtPartMap", "dvPartMap", V.Local.iCnt, "DeleteField", "Y")
+		F.Intrinsic.Control.EndSelect
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+	
+	F.Data.DataView.Close("dtPartMap", "dvPartMap")
+
+	F.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+		V.Local.sLoc.Set(V.Global.sLoc.Trim)
+		V.Local.sAltDesc1.Set("")
+		V.Local.sAltDesc2.Set("")
+		F.Global.General.OverrideCompany(V.Global.sCoCode.Trim)
+		F.Global.Inventory.CreatePart(V.Local.sPart, V.Local.sUM, V.Local.sDescription, V.Local.sLoc, V.Local.sPL, V.Local.sSourceCode,V.Local.sAltDesc1,V.Local.sAltDesc2, V.Local.fPrice, "UPLOADED")
+		
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.If(V.DataTable.dtLoc(V.Local.iLocCnt).MAPPER!FieldValTrim,<>,"MAPPER")
+
+		'create temp file for workflow
+		'build the script name
+'		F.Intrinsic.String.Build("{0}GCG_6074_PartRelease.g2u", V.Caller.GasDir, V.Local.sPartReleaseScript)
+'		
+'		V.Local.sTempPart.Set(V.Local.sPart)
+'		
+'		F.Intrinsic.String.IsInString(V.Local.sTempPart, "||", True, V.Local.bInString)
+'		F.Intrinsic.Control.If(V.Local.bInString,=,True)
+'			F.Intrinsic.String.Replace(V.Local.sTempPart, "||", "  ",V.Local.sTempPart)
+'		F.Intrinsic.Control.EndIf		
+'		F.Intrinsic.String.Len(V.Local.sTempPart,V.Local.iLen)
+'		F.Intrinsic.Control.If(V.Local.iLen,<,20)
+'			F.Intrinsic.String.RPad(V.Local.sTempPart, " ", 20, V.Local.sTempPart)
+'		F.Intrinsic.Control.EndIf
+'		F.Intrinsic.String.Right(V.Local.sTempPart,3,V.Local.sRev)
+'		F.Intrinsic.String.Left(V.Local.sTempPart, 17, V.Local.sTempPart)
+'		F.Intrinsic.String.Len(V.Local.sTempPart, V.Local.iLen)
+'		F.Intrinsic.Control.If(V.Local.iLen,<,17)
+'			F.Intrinsic.String.RPad(V.Local.sTempPart, " ", V.Local.sTempPart)
+'		F.Intrinsic.Control.EndIf
+'		
+'		'build the file path
+'		F.Intrinsic.String.Build("{0}\CUSTOM\GCG_6074_Workflows\Queue\{1}{2}_{3}_{4}.txt", V.Caller.GlobalDir, V.Local.sTempPart.Trim, V.Local.sRev.Trim,V.Local.sLoc.Trim,V.Ambient.Date.FormatMMDDYYYY, V.Local.sPartReleaseFilePath)
+'		'string together the information needed for the part release script
+'		F.Intrinsic.String.Build("{0},{1},{2}", V.Local.sTempPart,V.Local.sRev,V.Local.sLoc, V.Local.sPartReleaseData)
+'		'string the data to a txt file for the part release script 
+'		F.Intrinsic.File.String2File(V.Local.sPartReleaseFilePath, V.Local.sPartReleaseData)
+'		'call the script the part release script
+'		F.Global.General.CallAsyncGAS(V.Local.sPartReleaseScript, "", 2, V.Local.iRet)
+'		
+		F.Intrinsic.Control.CallSub(UpdatePartInfo)
+		
+	F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.Next(V.Local.iLocCnt)
+
+F.Intrinsic.Control.Catch
+	V.Global.sRESTError.Set("Y")
+	F.Intrinsic.Control.CallSub(ErrorMessage, "ErrorNumber", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription, "Subroutine", V.Ambient.CurrentSubroutine, "UNATTENDED", V.Global.bUnattended, "Project", "6013", "ProjectTitle", "CPR Part Data Import", "Callback", "Form_UnLoad")
+F.Intrinsic.Control.EndTry
+Program.Sub.PartCreation.End
+
+Program.Sub.UpdatePartInfo.Start
+F.Intrinsic.Control.Try
+V.Local.bIsInStrng.Declare(Boolean)
+V.Local.bFileExists.Declare(Boolean)
+V.Local.i.Declare(Long)
+V.Local.iCnt.Declare(Long)
+V.Local.iCnt2.Declare(Long)
+V.Local.iCnt3.Declare(Long)
+V.Local.iLength.Declare(Long)
+V.Local.iLen.Declare(Long)
+V.Local.iLen2.Declare(Long)
+V.Local.iLen3.Declare(Long)
+V.Local.iRet.Declare(Long)
+V.Local.sDelFlag.Declare(String)
+V.Local.sColumnName.Declare(String)
+V.Local.sInvField.Declare(String)
+V.Local.sLoc.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sRet2.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sTblName.Declare(String)
+V.Local.sUpdateData.Declare(String)
+V.Local.sRow.Declare(String)
+V.Local.sInvExtra.Declare(String)
+V.Local.sInvExFields.Declare(String)
+V.Local.sFields.Declare(String)
+V.Local.sTempCol.Declare(String)
+V.Local.sTempPart.Declare(String)
+V.Local.sRev.Declare(String)
+V.Local.sSQL2.Declare(String)
+V.Local.sExtraDesc.Declare(String)
+V.Local.sTempInvField.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sCmdtyDesc.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sNMFC.Declare(String)
+V.Local.sNMFCSub.Declare(String)
+V.Local.sCacheFilePath.Declare(String)
+V.Local.sCacheData.Declare(String)
+V.Local.sCacheScript.Declare(String)
+V.Local.sSwitches.Declare(String)
+V.Local.sInactiveFlag.Declare(String)
+V.Local.sInvAll.Declare(String)
+V.Local.sInvCost.Declare(String)
+V.Local.sPrevPart.Declare(String)
+V.Local.sPrevRev.Declare(String)
+V.Local.sFullPart.Declare(String)
+V.Local.sSelected.Declare(String)
+V.Local.sFullPrevPart.Declare(String)
+V.Local.sRet3.Declare(String)
+V.Local.sTime.Declare(String)
+v.Local.sDesc1.Declare(String)
+v.Local.sDesc2.Declare(String)
+v.Local.sDesc3.Declare(String)
+v.Local.sDesc4.Declare(String)
+v.Local.sDesc5.Declare(String)
+
+'add logic to check setinactiveflag variable and check for the inactive flag column
+
+F.Intrinsic.Control.If(V.Caller.Hook,>,1000000)
+	F.Intrinsic.String.Build("Updating {0} Part Information...", V.Global.sFile.Trim, V.Local.sMsg)
+
+	F.Intrinsic.UI.ChangeWaitStatus(V.Local.sMsg)
+F.Intrinsic.Control.EndIf
+f.ODBC.Connection!con.GetSchemaFieldList("Inv_Extra",V.Local.sInvExtra)
+F.Intrinsic.String.Replace(V.Local.sInvExtra, "Inv_Extra::", "",V.Local.sInvExtra)
+F.Intrinsic.String.Split(V.Local.sInvExtra,"*!*", V.Local.sInvExtra)
+
+F.Intrinsic.Control.If(V.DataTable.InvExtra.Exists)
+	F.Data.DataTable.Close("InvExtra")
+F.Intrinsic.Control.EndIf
+F.Data.DataTable.CreateFromSQL("InvExtra", "con", "SELECT * FROM INV_EXTRA_TITLES")
+
+F.Intrinsic.String.Build("INV_FIELD = 'INVENTORY_MSTR.PART' AND LOCATION = '{0}'", V.Global.sLoc.Trim, V.Local.sFilter)
+F.Data.DataTable.Select("dtPartMap", V.Local.sFilter, V.Local.sRow)
+V.Local.sPart.Set(V.DataTable.dtPartMap(V.Local.sRow.Long).Data!FieldValTrim)
+V.Local.sLoc.Set(V.Global.sLoc.Trim)
+
+F.Intrinsic.String.Build("LOCATION = '{0}'", V.Global.sLoc.Trim, V.Local.sFilter)
+F.Data.DataView.Create("dtPartMap", "dvPartMap", 22, V.Local.sFilter, "")
+
+'F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataView.dtPartMap!dvPartMap.RowCount--,1)
+'	'loop through and delete all of the columns that were you used for part creation so they don't get updated
+'	V.Local.sDelFlag.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt).Delete!FieldValTrim)
+'	F.Intrinsic.Control.If(V.Local.sDelFlag,=,"Y")
+'		F.Data.DataTable.DeleteRow("dtPartMap",V.Local.iCnt)
+'	F.Intrinsic.Control.EndIf
+'F.Intrinsic.Control.Next(V.Local.iCnt)
+
+'F.Data.DataTable.AcceptChanges("dtPartMap")
+
+F.Intrinsic.Control.For(V.Local.iCnt2,0,V.DataView.dtPartMap!dvPartMap.RowCount--,1)
+		'check to see if a previous revision of the part exists
+
+		'if a previous revision of the part exists, copy part attributes from V_Inventory_All, INV_Extra and Inventory_Costs. DO NOT COPY Inventory_mstr.Description, Inventory_mstr.UM_Inventory, inventory_mst3.COMM_DE, inventory_mst3.NMFC_NO, inventory_mst3.NMFC_SUB, inv_extra.user1 - inv_extra.29
+	F.Intrinsic.Control.If(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt2).DeleteField!FieldVal,<>,"Y")
+		V.Local.sInvField.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt2).INV_FIELD!FieldValTrim)
+		F.Intrinsic.String.Split(V.Local.sInvField,".",V.Local.sInvField)
+		V.Local.sTblName.Set(V.Local.sInvField(0))
+		V.Local.sColumnName.Set(V.Local.sInvField(1))
+		V.Local.sUpdateData.Set(V.DataView.dtPartMap!dvPartMap(V.Local.iCnt2).Data!FieldValTrim)
+	
+		F.Intrinsic.String.Build("{0}.{1}", V.Local.sTblName.Trim,V.Local.sColumnName.Trim, V.Local.sTempInvField)
+		F.Intrinsic.Control.If(V.Local.sTempInvField.Trim,=,"INVENTORY_MSTR.DESCRIPTION")
+		
+			v.Local.sExtraDesc.Set(V.Local.sUpdateData.Trim)
+			F.Intrinsic.String.IsInString(V.Local.sExtraDesc, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sExtraDesc.Trim, "'", "''", V.Local.sExtraDesc)
+			F.Intrinsic.Control.EndIf
+		
+			F.Intrinsic.String.Build("SELECT PART FROM INV_EXTRA_TEXT WHERE PART LIKE '%{0}%' ", V.Local.sPart.Trim, V.Local.sSQL)
+			F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+
+			F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+				F.Intrinsic.String.Build("UPDATE INV_EXTRA_TEXT SET TEXT = '{0}' WHERE PART = '{1}'", V.Local.sExtraDesc.Trim, V.Local.sPart.Trim, V.Local.sSQL)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("INSERT INTO INV_EXTRA_TEXT (PART,TEXT) VALUES ('{0}', '{1}')", V.Local.sPart.Trim, V.Local.sExtraDesc.Trim,V.Local.sSQL)
+			F.Intrinsic.Control.EndIf
+		
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.EndIf
+	
+		F.Intrinsic.Control.If(V.Local.sTblName,=,"INV_EXTRA")
+			f.Intrinsic.String.RPad(V.Local.sPart, " ", 20, V.Local.sPart)
+			F.Intrinsic.String.Left(V.Local.sPart,17,V.Local.sTempPart)
+			F.Intrinsic.String.Right(V.Local.sPart,3,V.Local.sRev)
+			F.Intrinsic.String.IsInString(V.Local.sRev,"||", True, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Right(V.Local.sRev,1,V.Local.sRev)
+			F.Intrinsic.Control.EndIf
+		
+			F.Intrinsic.Control.For(V.Local.i,3,V.Local.sInvExtra.UBound,1)
+				F.Intrinsic.Control.If(V.Local.sColumnName,=,V.DataTable.InvExtra(V.DataTable.InvExtra.RowCount--).[V.Local.sInvExtra(V.Local.i)]!FieldValTrim)
+					V.Local.sTempCol.Set(V.Local.sInvExtra(V.Local.i))
+					'check to see if the part/rev already exists in the table to prevent multiple records being inserted		
+						F.Intrinsic.String.Build("SELECT PART FROM INV_EXTRA WHERE PART = '{0}' AND REV= '{1}' AND LOCATION = '{2}'",V.Local.sTempPart.Trim, V.Local.sRev.Trim, V.Global.sLoc.Trim,V.Local.sSQL)
+						F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+						F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+						
+							F.Intrinsic.String.Build("UPDATE {0} SET {1} = '{2}' WHERE PART = '{3}' AND REV = '{4}' AND LOCATION = '{5}' ", V.Local.sTblName.Trim, V.Local.sTempCol.Trim, V.Local.sUpdateData.Trim, V.Local.sTempPart.Trim, v.Local.sRev.Trim, V.Global.sLoc.Trim,V.Local.sSQL)
+							F.ODBC.Connection!con.Execute(V.Local.sSQL)
+						F.Intrinsic.Control.Else
+							F.Intrinsic.String.Build("INSERT INTO {0} (PART, REV,LOCATION,USER1,USER2,USER3,USER4,USER5,USER6, USER7,USER8,USER9,USER10,USER11,USER12,USER13,USER14,USER15,USER16,USER17,USER18,USER19,USER20,USER21,USER22,USER23,USER24,USER25,USER26,USER27,USER28,USER29,USER30,USER31,USER32,USER33,USER34,USER35,USER36,USER37,USER38,USER39,USER40,USER41,USER42,USER43,USER44,USER45,USER46,USER47,USER48,USER49,USER50,USER51,USER52,USER53,USER54,USER55,USER56,USER57,USER58) VALUES ('{1}','{2}', '{3}', '','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','','')", V.Local.sTblName.Trim, V.Local.sTempPart.Trim, V.Local.sRev.Trim, V.Global.sLoc.Trim,V.Local.sSQL2)
+							F.ODBC.Connection!con.Execute(V.Local.sSQL2)
+						F.Intrinsic.Control.EndIf
+				
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Next(V.Local.i)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.IsInString(V.Local.sUpdateData, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sUpdateData.Trim, "'", "''", V.Local.sUpdateData)
+			F.Intrinsic.Control.EndIf
+		
+			F.Intrinsic.Control.If(V.Local.sTblName,=, "INVENTORY_MSTR", "AND", V.Local.sColumnName,=, "FLAG_INACTIVE")
+
+				F.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+					F.Intrinsic.String.Build("UPDATE {0} SET {1} = 'Y' WHERE PART = '{2}' AND LOCATION = '{3}' ", V.Local.sTblName.Trim, V.Local.sColumnName.Trim,V.Local.sPart.Trim, V.Local.sLoc.Trim, V.Local.sSQL)
+					F.ODBC.Connection!con.Execute(V.Local.sSQL)
+				F.Intrinsic.Control.ElseIf(V.Global.sPartExists,=,"Y")
+				'query the custom table to see what they have the flag set to for the part
+					F.Intrinsic.String.Build("SELECT INACTIVE_FLAG FROM GCG_6013_INACTIVEFLG WHERE GSSPART = '{0}' ", V.Local.sPart.Trim, V.Local.sSQL)
+					F.ODBC.Connection!conCom.ExecuteAndReturn(V.Local.sSQL, V.Local.sInactiveFlag)
+					F.Intrinsic.Control.If(V.Local.sInactiveFlag.Trim,<>,"")
+						F.Intrinsic.String.Build("UPDATE {0} SET {1} = '{4}' WHERE PART = '{2}' AND LOCATION = '{3}' ", V.Local.sTblName.Trim, V.Local.sColumnName.Trim,V.Local.sPart.Trim, V.Local.sLoc.Trim, V.Local.sInactiveFlag.Trim, V.Local.sSQL)
+						F.ODBC.Connection!con.Execute(V.Local.sSQL)
+						
+						'update the obsolete flag
+						F.Intrinsic.String.Build("UPDATE INVENTORY_MSTR SET OBSOLETE_FLAG = '' WHERE PART = '{0}' AND LOCATION = '{1}' ", v.Local.sPart.Trim, v.Local.sLoc.Trim, V.Local.sSQL)
+						F.ODBC.Connection!con.Execute(V.Local.sSQL)
+						
+					F.Intrinsic.Control.EndIf
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Build("UPDATE {0} SET {1} = '{2}' WHERE PART = '{3}' AND LOCATION = '{4}' ", V.Local.sTblName.Trim, V.Local.sColumnName.Trim, V.Local.sUpdateData.Trim, V.Local.sPart.Trim, V.Local.sLoc.Trim,V.Local.sSQL)
+				F.ODBC.Connection!con.Execute(V.Local.sSQL)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf	
+F.Intrinsic.Control.Next(V.Local.iCnt2)
+
+'logic to update the date last change so inventory master reflects the changes
+F.Intrinsic.String.Build("UPDATE INVENTORY_MSTR SET DATE_LAST_CHG = '{0}' WHERE PART = '{1}'", V.Ambient.Date.FormatYYMMDD, V.Local.sPart.Trim, V.Local.sSQL)
+F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	
+F.Intrinsic.String.Build("SELECT DISTINCT NMFC_NO, NMFC_SUB_NO FROM V_INVENTORY_MST3 WHERE PART = '{0}' AND LOCATION = '{1}'", V.Local.sPart.Trim, V.Local.sLoc.Trim,V.Local.sSQL)
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+	F.Intrinsic.String.Split(V.Local.sRet, "*!*", V.Local.sRet)
+	F.Intrinsic.String.Build("SELECT DESC_30 FROM BOL_CMMDTY_DESC WHERE ID = '{0}' AND SUB_NO = '{1}'", V.Local.sRet(0).Trim, V.Local.sRet(1).Trim, V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sCmdtyDesc)
+	F.Intrinsic.Control.If(V.Local.sCmdtyDesc,<>,"")
+		F.Intrinsic.String.Build("UPDATE INVENTORY_MST3 SET COMM_DESCR = '{0}' WHERE PART = '{1}' AND LOCATION = '{2}'", V.Local.sCmdtyDesc.Trim,V.Local.sPart.Trim, V.Local.sLoc.Trim,V.Local.sSQL)
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.Control.Else
+		V.Local.sNMFC.Set("YY0000")
+		V.Local.sNMFCSub.Set("00")
+		F.Intrinsic.String.Build("SELECT DESC_30 FROM BOL_CMMDTY_DESC WHERE ID = '{0}' AND SUB_NO = '{1}'", V.Local.sNMFC.Trim, V.Local.sNMFCSub.Trim, V.Local.sSQL)
+		F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sCmdtyDesc)
+		F.Intrinsic.Control.If(V.Local.sCmdtyDesc,<>,"")
+			F.Intrinsic.String.Build("UPDATE INVENTORY_MST3 SET COMM_DESCR = '{0}' WHERE PART = '{1}' AND LOCATION = '{2}'", V.Local.sCmdtyDesc.Trim,V.Local.sPart.Trim, V.Local.sLoc.Trim,V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Data.DataView.Close("dtPartMap","dvPartMap")
+
+'use the location to filter the dtloc datatable to see if their is a previous part/revision that's active
+F.Intrinsic.String.Build("[LOCATION] = '{0}'", V.Global.sLoc.Trim, V.Local.sFilter)
+F.Data.DataTable.Select("dtLoc", V.Local.sFilter, V.Local.sSelected)
+'check to see if the previous revision flag is checked
+
+
+F.Intrinsic.Control.If(V.DataTable.dtLoc(V.Local.sSelected.Long).PREVREV_FLAG!FieldVal,=,True, "AND", V.DataTable.dtLoc(V.Local.sSelected.Long).EXISTS!FieldValTrim,=,"N")
+
+	'if the previous revision flag is checked, query v_inventory_all, inv_extra and inventory_costs for the previous part/revision/location
+	V.Local.sPrevPart.Set(V.DataTable.dtLoc(V.Local.sSelected.Long).PREV_PART!FieldVal)
+	V.Local.sPrevRev.Set(V.DataTable.dtLoc(V.Local.sSelected.Long).PREV_REV!FieldVal)
+	V.Local.sLoc.Set(V.DataTable.dtLoc(V.Local.sSelected.Long).LOCATION!FieldValTrim)
+	V.Local.sPart.Set(V.DataTable.dtLoc(V.Local.sSelected.Long).PART!FieldVal)
+	V.Local.sRev.Set(V.DataTable.dtLoc(V.Local.sSelected.Long).REV!FieldVal)
+	F.Intrinsic.String.RPad(V.Local.sPart, " ", 17, V.Local.sPart)
+	F.Intrinsic.String.RPad(V.Local.sRev," ",3,V.Local.sRev)
+	F.Intrinsic.String.Build("{0}{1}", V.Local.sPart, V.Local.sRev, V.Local.sFullPart)
+	F.Intrinsic.String.RPad(V.Local.sPrevPart, " ", 17, V.Local.sPrevPart)
+	F.Intrinsic.String.RPad(V.Local.sPrevRev," ",3,V.Local.sPrevRev)
+	F.Intrinsic.String.Build("{0}{1}", V.Local.sPrevPart, V.Local.sPrevRev, V.Local.sFullPrevPart)
+		
+	'create datatable for each table
+	'datatable for v_inventory_all columns
+	F.Intrinsic.Control.If(V.DataTable.dtInvAll.Exists)
+		F.Data.DataTable.Close("dtInvAll")
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.String.Build("SELECT PRODUCT_LINE, BIN, COST, CODE_ABC, BIN,UM_PURCHASING, FACTOR_CONVERSION, QTY_ORDER, QTY_SAFETY, QTY_REORDER, AMT_COST, AMT_PRICE, CODE_BOM, CODE_DISCOUNT, CODE_TOTAL, CODE_SORT, CODE_EXTRA_DESC, PCT_ORDER_DISC, TIME_MATERIAL_LEAD, PRIM_DIM, SEC_DIM, AMT_BEG_COST, CODE_EXCEPTION, CODE_PERM_FIX, AMT_ALT_COST, LENGTH_RAW_MATL, WIDTH_RAW_MATL, DENSITY_RAW_MATL, CODE_RM_SHAPE, FLAG_LOT, FLAG_DROP, FLAG_6_COST, FLAG_SERIALIZE, FLAG_WARRANTY, USE_ZERO_LEAD, QTY_MAXIMUM, HRS_STANDARD, LBS, CODE_SOURCE, NAME_VENDOR, TEXT_INFO1, TEXT_INFO2, DESCRIPTION_2, DESCRIPTION_3, AMT_COST_1, AMT_COST_2,AMT_COST_3, DATE_CYCLE, LIFO_BASE, SIX_DECIMAL_COST, WT_PER_FOOT, CUTTING_CHARGE, SHP_CNV_FACTOR, SHIP_UM, LENGTH, WIDTH, WARRANTY_TYPE, PROP_CODE, REQUIRES_INSP, BASE_PART, PRICE_CATG, ISSUE_UM, PART_PRICE_CODE, MATL_SCHRG_TYPE, HM_FLAG, FRT_CLASS, PALLET_FLAG, CNTNRS_PER_PALLET, PKGD_BY, PCS_PER_CNTNR, DFLT_CARTON_CD, DFLT_PALLET_CD, PKGD_WEIGHT, PKG_COMPONENTS, LOT_TO_LOT, DROP_SHIP,CONSUMP_CONV, BOM_REF, STOCK_BIN, GEN_PART_SEQ, GEN_PART_NBR, IC_VENDOR, SHELF_LIFE, REQUIRES_TESTING, BIZ_WEB_PART_FLG, AUTO_LOT_NUM, AGING, PROJECT_GROUP, TEMP_PURCH, CONSUMPTION_PERCENT, DO_NOT_CALC_ABC, EXCL_MULTI_PART_WO, PO_CERTS_REQD, THICKNESS, ROLL, INCL_SPCD, NO_DISC, COST_NO_OVHD, STANDARD_COST_QTY, TRIGGER_PART, VAT_PRODUCT_TYP, TAX_EXEMPT_FLG, DO_NOT_BACKFLUSH, MODEL_BOM_FLAG, MFG_LEAD, MFG_QTY_MINIMUM, MFG_QTY_MULTIPLE, USE_DIMENSION_CALC FROM V_INVENTORY_ALL WHERE PART = '{0}' AND LOCATION = '{1}'", V.Local.sFullPrevPart, V.Local.sLoc, V.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvAll", "con", V.Local.sSQL, True)
+	
+	'datatable for inv_alt_price
+	F.Intrinsic.Control.If(V.DataTable.dtInvAltPrice.Exists)
+		F.Data.DataTable.Close("dtInvAltPrice")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT PART, LOCN, ALT_PRICE_1, ALT_PRICE_2, ALT_PRICE_3, ALT_PRICE_4, ALT_PRICE_5, ALT_PRICE_6, ALT_PRICE_7, ALT_PRICE_8, ALT_PRICE_9, ALT_PRICE_10, ALT_PRICE_11, ALT_PRICE_12, ALT_PRICE_13, ALT_PRICE_14, ALT_PRICE_15, ALT_PRICE_16, ALT_PRICE_17, ALT_PRICE_18, ALT_PRICE_19, ALT_PRICE_20 FROM V_INV_ALT_PRICE WHERE PART = '{0}' AND LOCN = '{1}'", V.Local.sFullPrevPart, V.Local.sLoc, V.Local.sSQL)	
+	F.Data.DataTable.CreateFromSQL("dtInvAltPrice", "con", V.Local.sSQL, True)
+	
+	'datatable for tax_category_idx
+	F.Intrinsic.Control.If(V.DataTable.dtInvTaxCat.Exists)
+		F.Data.DataTable.Close("dtInvTaxCat")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT PART_NUMBER, TAX_CATG FROM V_TAX_CATEGORY_IDX WHERE PART_NUMBER = '{0}' ", V.Local.sFullPrevPart, v.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvTaxCat", "con", V.Local.sSQL, True)
+	
+	'datatable for inv_extra
+	F.Intrinsic.Control.If(V.DataTable.dtInvExtra.Exists)
+		F.Data.DataTable.Close("dtInvExtra")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT USER30, USER31, USER32, USER33, USER34, USER35, USER36, USER37, USER38, USER39, USER40, USER41, USER42, USER43, USER44, USER45, USER46, USER47, USER48, USER49, USER50, USER51, USER52, USER53, USER54, USER55, USER56, USER57, USER58, USER59, USER60 FROM INV_EXTRA WHERE PART = '{0}' AND REV = '{1}' AND LOCATION = '{2}'", v.Local.sPrevPart, V.Local.sPrevRev, V.Local.sLoc, V.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvExtra", "con", V.Local.sSQL,True)
+		
+	'datatable for inventory_cost
+	F.Intrinsic.Control.If(V.DataTable.dtInvCost.Exists)
+		F.Data.DataTable.Close("dtInvCost")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT * FROM V_INVENTORY_COST WHERE PART = '{0}' AND LOCN = '{1}'", V.Local.sFullPrevPart, V.Local.sLoc, V.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvCost","con", V.Local.sSQL, True)
+	
+	'Datatable for inv_descr_lang
+	F.Intrinsic.Control.If(V.DataTable.dtInvDescLang.Exists)
+		F.Data.DataTable.Close("dtInvDescLang")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT * FROM V_INV_DESCR_LANG WHERE PART = '{0}' AND LOCN = '{1}' AND LANG_CD = 'ENG'", V.Local.sFullPrevPart, V.Local.sLoc, V.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvDescLang", "con", V.Local.sSQL, True)
+	
+	'Datatable for INV_XTR_TXT_LANG
+	F.Intrinsic.Control.If(V.DataTable.dtInvXtrTxt.Exists)
+		F.Data.DataTable.Close("dtInvXtrTxt")
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.String.Build("SELECT * FROM V_INV_XTR_TXT_LANG WHERE PART = '{0}' AND LANG_CD = 'ENG'", V.Local.sFullPrevPart, V.Local.sSQL)
+	F.Data.DataTable.CreateFromSQL("dtInvXtrTxt", "con", V.Local.sSQL, True)
+		
+	'loop through each datatable and update the information on the new part/revision/location
+	'do not copy inventory_mstr.description, inventory_mstr.um_inventory, inventory_mst3.comm_desc, inventory_mst3.nmfc_no, inventory_mst3.nmfc_sub_no, inv_extra.user1 through inv_extra.user29
+		
+	'loop through dtinvall and update the corresponding inventory tables for the new part
+	F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvAll.RowCount--,1)
+		'Build update statement for inventory_mstr
+		F.Intrinsic.String.Build("UPDATE INVENTORY_MSTR SET CODE_ABC = '{0}', BIN = '{1}', UM_PURCHASING = '{2}', FACTOR_CONVERSION = '{3}', AMT_COST = '{4}', AMT_PRICE = '{5}', CODE_BOM = '{6}', CODE_DISCOUNT = '{7}', CODE_TOTAL = '{8}', CODE_SORT = '{9}', CODE_EXTRA_DESC = '{10}', PCT_ORDER_DISC = '{11}', TIME_MATERIAL_LEAD = '{12}', PRIM_DIM = '{13}', SEC_DIM = '{14}', AMT_BEG_COST = '{15}', CODE_EXCEPTION = '{16}', CODE_PERM_FIX = '{17}', AMT_ALT_COST = '{18}', LENGTH_RAW_MATL = '{19}', WIDTH_RAW_MATL = '{20}', DENSITY_RAW_MATL = '{21}', CODE_RM_SHAPE = '{22}', FLAG_LOT = '{23}', FLAG_DROP = '{24}', FLAG_6_COST = '{25}', FLAG_SERIALIZE = '{26}', FLAG_WARRANTY = '{27}', USE_ZERO_LEAD = '{28}', PRODUCT_LINE = '{29}',  QTY_ORDER = '{30}', QTY_SAFETY = '{31}', QTY_REORDER = '{32}' WHERE PART = '{33}' AND LOCATION = '{34}'", V.DataTable.dtInvAll(V.Local.iCnt2).CODE_ABC!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).BIN!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).UM_PURCHASING!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FACTOR_CONVERSION!FieldValFloat,V.DataTable.dtInvAll(V.Local.iCnt2).AMT_COST!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_PRICE!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_BOM!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_DISCOUNT!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_TOTAL!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_SORT!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_EXTRA_DESC!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PCT_ORDER_DISC!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).TIME_MATERIAL_LEAD!FieldVal,V.DataTable.dtInvAll(V.Local.iCnt2).PRIM_DIM!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).SEC_DIM!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_BEG_COST!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_EXCEPTION!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_PERM_FIX!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_ALT_COST!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).LENGTH_RAW_MATL!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).WIDTH_RAW_MATL!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DENSITY_RAW_MATL!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_RM_SHAPE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FLAG_LOT!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FLAG_DROP!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FLAG_6_COST!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FLAG_SERIALIZE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FLAG_WARRANTY!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).USE_ZERO_LEAD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PRODUCT_LINE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).QTY_ORDER!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).QTY_SAFETY!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).QTY_REORDER!FieldValFloat, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+			
+		'execute the query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+			
+		'build update statement for inventory_mst2
+		F.Intrinsic.String.Build("UPDATE INVENTORY_MST2 SET QTY_MAXIMUM = '{0}', HRS_STANDARD = '{1}', LBS = '{2}', CODE_SOURCE = '{3}', NAME_VENDOR = '{4}', TEXT_INFO1 = '{5}', TEXT_INFO2 = '{6}', DESCRIPTION_2 = '{7}', DESCRIPTION_3 = '{8}', AMT_COST_1 = '{9}', AMT_COST_2 = '{10}', AMT_COST_3 = '{11}', DATE_CYCLE = '{12}', LIFO_BASE = '{13}', SIX_DECIMAL_COST = '{14}', WT_PER_FOOT = '{15}', CUTTING_CHARGE = '{16}', SHP_CNV_FACTOR = '{17}', SHIP_UM = '{18}', LENGTH = '{19}', WIDTH = '{20}', WARRANTY_TYPE = '{21}', PROP_CODE = '{22}', REQUIRES_INSP = '{23}', BASE_PART = '{24}', PRICE_CATG = '{25}', ISSUE_UM = '{26}', PART_PRICE_CODE = '{27}' WHERE PART = '{28}' AND LOCATION = '{29}'", V.DataTable.dtInvAll(V.Local.iCnt2).QTY_MAXIMUM!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).HRS_STANDARD!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).LBS!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).CODE_SOURCE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).NAME_VENDOR!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).TEXT_INFO1!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).TEXT_INFO2!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DESCRIPTION_2!FieldValTrim, V.DataTable.dtInvAll(V.Local.iCnt2).DESCRIPTION_3!FieldValTrim, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_COST_1!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_COST_2!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).AMT_COST_3!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).DATE_CYCLE!FieldValPervasiveDate, V.DataTable.dtInvAll(V.Local.iCnt2).LIFO_BASE!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).SIX_DECIMAL_COST!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).WT_PER_FOOT!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).CUTTING_CHARGE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).SHP_CNV_FACTOR!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).SHIP_UM!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).LENGTH!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).WIDTH!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).WARRANTY_TYPE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PROP_CODE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).REQUIRES_INSP!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).BASE_PART!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PRICE_CATG!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).ISSUE_UM!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PART_PRICE_CODE!FieldVal, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+		'execute the query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+			
+		'build update statement for inventory_mst3
+		F.Intrinsic.String.Build("UPDATE INVENTORY_MST3 SET MATL_SCHRG_TYPE = '{0}', HM_FLAG = '{1}', FRT_CLASS = '{2}', PALLET_FLAG = '{3}',CNTNRS_PER_PALLET = '{4}', PKGD_BY = '{5}', PCS_PER_CNTNR = '{6}', DFLT_CARTON_CD = '{7}', DFLT_PALLET_CD = '{8}', PKGD_WEIGHT = '{9}', PKG_COMPONENTS = '{10}', LOT_TO_LOT = '{11}', DROP_SHIP = '{12}', CONSUMP_CONV = '{13}', BOM_REF = '{14}', STOCK_BIN = '{15}', GEN_PART_SEQ = '{16}', GEN_PART_NBR = '{17}', IC_VENDOR = '{18}', SHELF_LIFE = '{19}', REQUIRES_TESTING = '{20}', BIZ_WEB_PART_FLG = '{21}', AUTO_LOT_NUM = '{22}', AGING = '{23}', PROJECT_GROUP = '{24}', TEMP_PURCH = '{25}', CONSUMPTION_PERCENT = '{26}', DO_NOT_CALC_ABC = '{27}', EXCL_MULTI_PART_WO = '{28}', PO_CERTS_REQD = '{29}', THICKNESS = '{30}', ROLL = '{31}', INCL_SPCD = '{32}', NO_DISC = '{33}', COST_NO_OVHD = '{34}', STANDARD_COST_QTY = '{35}', TRIGGER_PART = '{36}',VAT_PRODUCT_TYP = '{37}', TAX_EXEMPT_FLG = '{38}', DO_NOT_BACKFLUSH = '{39}', MODEL_BOM_FLAG = '{40}', MFG_LEAD = '{41}', MFG_QTY_MINIMUM = '{42}', MFG_QTY_MULTIPLE = '{43}', USE_DIMENSION_CALC = '{44}' WHERE PART = '{45}' AND LOCATION = '{46}'",V.DataTable.dtInvAll(V.Local.iCnt2).MATL_SCHRG_TYPE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).HM_FLAG!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).FRT_CLASS!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PALLET_FLAG!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CNTNRS_PER_PALLET!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PKGD_BY!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PCS_PER_CNTNR!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DFLT_CARTON_CD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DFLT_PALLET_CD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PKGD_WEIGHT!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).PKG_COMPONENTS!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).LOT_TO_LOT!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DROP_SHIP!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CONSUMP_CONV!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).BOM_REF!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).STOCK_BIN!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).GEN_PART_SEQ!FieldVal,V.DataTable.dtInvAll(V.Local.iCnt2).GEN_PART_NBR!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).IC_VENDOR!FieldVal,V.DataTable.dtInvAll(V.Local.iCnt2).SHELF_LIFE!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).REQUIRES_TESTING!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).BIZ_WEB_PART_FLG!FieldVal,V.DataTable.dtInvAll(V.Local.iCnt2).AUTO_LOT_NUM!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).AGING!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PROJECT_GROUP!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).TEMP_PURCH!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).CONSUMPTION_PERCENT!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).DO_NOT_CALC_ABC!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).EXCL_MULTI_PART_WO!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).PO_CERTS_REQD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).THICKNESS!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).ROLL!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).INCL_SPCD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).NO_DISC!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).COST_NO_OVHD!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).STANDARD_COST_QTY!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).TRIGGER_PART!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).VAT_PRODUCT_TYP!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).TAX_EXEMPT_FLG!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).DO_NOT_BACKFLUSH!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).MODEL_BOM_FLAG!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).MFG_LEAD!FieldVal, V.DataTable.dtInvAll(V.Local.iCnt2).MFG_QTY_MINIMUM!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).MFG_QTY_MULTIPLE!FieldValFloat, V.DataTable.dtInvAll(V.Local.iCnt2).USE_DIMENSION_CALC!FieldValLong, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+			
+		'execute query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.Control.Next(V.Local.iCnt2)
+	
+	'loop through dtinvaltprice and update the corresponding fields for the new part
+	F.Intrinsic.Control.For(V.Local.iCnt2,0,V.DataTable.dtInvAltPrice.RowCount--,1)
+		F.Intrinsic.String.Build("UPDATE INV_ALT_PRICE SET ALT_PRICE_1 = '{0}', ALT_PRICE_2 = '{1}', ALT_PRICE_3 = '{2}', ALT_PRICE_4 = '{3}', ALT_PRICE_5 = '{4}', ALT_PRICE_6 = '{5}', ALT_PRICE_7 = '{6}', ALT_PRICE_8 = '{7}', ALT_PRICE_9 = '{8}', ALT_PRICE_10 = '{9}', ALT_PRICE_11 = '{10}', ALT_PRICE_12 = '{11}', ALT_PRICE_13 = '{12}', ALT_PRICE_14 = '{13}', ALT_PRICE_15 = '{14}', ALT_PRICE_16 = '{15}', ALT_PRICE_17 = '{16}', ALT_PRICE_18 = '{17}', ALT_PRICE_19 = '{18}', ALT_PRICE_20 = '{19}'  WHERE PART = '{20}' AND LOCN = '{21}'", V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_1!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_2!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_3!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_4!FieldValFloat,  V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_5!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_6!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_7!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_8!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_9!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_10!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_11!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_12!FieldValFloat,  V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_13!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_14!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_15!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_16!FieldValFloat,V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_17!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_18!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_19!FieldValFloat, V.DataTable.dtInvAltPrice(V.Local.iCnt2).ALT_PRICE_20!FieldValFloat, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+		
+		'execute update query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.Control.Next(V.Local.iCnt2)
+	
+	'loop through dtInvTaxCat and update the corresponding fields for the new part
+	'check to see if the new part has a tax cateogry record
+	F.Intrinsic.String.Build("SELECT PART_NUMBER, TAX_CATG FROM V_TAX_CATEGORY_IDX WHERE PART_NUMBER = '{0}' ", V.Local.sFullPart, v.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(v.Local.sSQL, V.Local.sRet3)
+	F.Intrinsic.Control.If(V.Local.sRet3.Trim,<>,"")
+		F.Intrinsic.Control.For(V.Local.iCnt2,0,V.DataTable.dtInvTaxCat.RowCount--,1)
+			F.Intrinsic.String.Build("UPDATE TAX_CATEGORY_IDX SET TAX_CATG = '{0}' WHERE PART_NUMBER = '{1}'", V.DataTable.dtInvTaxCat(V.Local.iCnt2).TAX_CATG!FieldVal, V.Local.sFullPart, V.Local.sSQL)
+		
+			'execute the update query
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvTaxCat.RowCount--,1)
+			F.Intrinsic.String.Build("INSERT INTO TAX_CATEGORY_IDX (PART_NUMBER, TAX_CATG) VALUES ('{0}', '{1}')", V.Local.sFullPart, V.DataTable.dtInvTaxCat(V.Local.iCnt2).TAX_CATG!FieldVal, V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.EndIf
+	
+	'loop through dtinvextra and update the corresponding fields for the new part
+	F.Intrinsic.Control.For(V.Local.iCnt2,0,V.DataTable.dtInvExtra.RowCount--,1)
+		F.Intrinsic.String.Build("UPDATE INV_EXTRA SET USER30 = '{0}', USER31 = '{1}', USER32 = '{2}', USER33 = '{3}', USER34 = '{4}', USER35 = '{5}', USER36 = '{6}', USER37 = '{7}', USER38 = '{8}', USER39 = '{9}', USER40 = '{10}',USER41 = '{11}', USER42 = '{12}', USER43 = '{13}', USER44 = '{14}', USER45 = '{15}', USER46 = '{16}', USER47 = '{17}', USER48 = '{18}', USER49 = '{19}', USER50 = '{20}',USER51 = '{21}', USER52 = '{22}', USER53 = '{23}', USER54 = '{24}', USER55 = '{25}', USER56 = '{26}', USER57 = '{27}', USER58 = '{28}', USER59 = '{29}', USER60 = '{30}' WHERE PART = '{31}' AND REV = '{32}' AND LOCATION = '{33}'", V.DataTable.dtInvExtra(V.Local.iCnt2).USER30!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER31!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER32!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER33!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER34!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER35!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER36!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER37!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER38!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER39!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER40!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER41!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER42!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER43!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER44!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER45!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER46!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER47!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER48!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER49!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER50!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER51!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER52!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER53!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER54!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER55!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER56!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER57!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER58!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER59!FieldValTrim, V.DataTable.dtInvExtra(V.Local.iCnt2).USER60!FieldValTrim, V.Local.sPart, V.Local.sRev, V.Local.sLoc, V.Local.sSQL)
+		'execute the query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.Control.Next(V.Local.iCnt2)
+		
+	'loop through dtinvcost and update the corresponding fields for the new part
+	F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvCost.RowCount--,1)
+		F.Intrinsic.String.Build("UPDATE INVENTORY_COST SET COST = '{0}', MATL = '{1}', LABOR = '{2}', OVHD = '{3}', OUTS = '{4}', FREIGHT = '{5}', OTH = '{6}' WHERE PART = '{7}' AND LOCN = '{8}'", V.DataTable.dtInvCost(V.Local.iCnt2).COST!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).MATL!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).LABOR!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).OVHD!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).OUTS!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).FREIGHT!FieldValFloat, V.DataTable.dtInvCost(V.Local.iCnt2).OTH!FieldValFloat, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+		'execute the query
+		F.ODBC.Connection!con.Execute(V.Local.sSQL)
+	F.Intrinsic.Control.Next(V.Local.iCnt2)
+	
+	'loop through  dtinvdesclang and update the corresponding fields for the new part
+	'check to see if the new part has a record already. If it does, update the record. If it doesn't, insert it
+	F.Intrinsic.String.Build("SELECT * FROM V_INV_DESCR_LANG WHERE PART = '{0}' AND LOCN = '{1}' AND LANG_CD = 'ENG'", V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet3)
+	F.Intrinsic.Control.If(V.Local.sRet3.Trim,<>,"")
+		F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvDescLang.RowCount--,1)
+			V.Local.sTime.Set(V.Ambient.Time)
+			F.Intrinsic.String.Format(V.Local.sTime, "HhNnSs", V.Local.sTime)
+			F.Intrinsic.String.Build("{0}00", V.Local.sTime, V.Local.sTime)
+			
+			V.Local.sDesc1.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESCR!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc1, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc1.Trim, "'", "''", V.Local.sDesc1)
+			F.Intrinsic.Control.EndIf
+			
+			V.Local.sDesc2.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESC_E60_1!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc2, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc2.Trim, "'", "''", V.Local.sDesc2)
+			F.Intrinsic.Control.EndIf
+			
+			V.Local.sDesc3.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESC_E60_2!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc3, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc3.Trim, "'", "''", V.Local.sDesc3)
+			F.Intrinsic.Control.EndIf
+			
+			F.Intrinsic.String.Build("UPDATE INV_DESCR_LANG SET DESCR = '{0}', DESC_E60_1 = '{1}',DESC_E60_2 = '{2}', DATE_LAST_CHG = '{3}', TIME_LAST_CHG = '{4}', LAST_CHG_BY = 'ONLINE', LAST_CHG_PGM = 'ONLINE' WHERE PART = '{5}' AND LOCN = '{6}' AND LANG_CD ='ENG'", V.Local.sDesc1.Trim, V.Local.sDesc2.Trim, V.Local.sDesc3.Trim, V.Ambient.Date.FormatYYYYMMDD, V.Local.sTime, V.Local.sFullPart, V.Local.sLoc, V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvDescLang.RowCount--,1)
+			V.Local.sTime.Set(V.Ambient.Time)
+			F.Intrinsic.String.Format(V.Local.sTime, "HhNnSs", V.Local.sTime)
+			F.Intrinsic.String.Build("{0}00", V.Local.sTime, V.Local.sTime)
+			
+			V.Local.sDesc1.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESCR!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc1, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc1.Trim, "'", "''", V.Local.sDesc1)
+			F.Intrinsic.Control.EndIf
+			
+			V.Local.sDesc2.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESC_E60_1!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc2, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc2.Trim, "'", "''", V.Local.sDesc2)
+			F.Intrinsic.Control.EndIf
+			
+			V.Local.sDesc3.Set(V.DataTable.dtInvDescLang(V.Local.iCnt2).DESC_E60_2!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc3, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc3.Trim, "'", "''", V.Local.sDesc3)
+			F.Intrinsic.Control.EndIf
+			
+			F.Intrinsic.String.Build("INSERT INTO INV_DESCR_LANG(PART, LOCN, LANG_CD, DESCR, DESC_E60_1, DESC_E60_2,DATE_LAST_CHG, TIME_LAST_CHG, LAST_CHG_BY,LAST_CHG_PGM) VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', 'ONLINE', 'ONLINE')", V.Local.sFullPart, V.Local.sLoc,V.DataTable.dtInvDescLang(V.Local.iCnt2).LANG_CD!FieldValTrim, V.Local.sDesc1.Trim, V.Local.sDesc2.Trim, V.Local.sDesc3.Trim, V.Ambient.Date.FormatYYYYMMDD, V.Local.sTime, v.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.EndIf
+	
+	'check to see if the inv_xtr_txt_lang record exists for the new part
+	F.Intrinsic.String.Build("SELECT * FROM V_INV_XTR_TXT_LANG WHERE PART = '{0}' AND LANG_CD = 'ENG'", V.Local.sFullPart, V.Local.sSQL)
+	F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sRet3)
+	F.Intrinsic.Control.If(V.Local.sRet3.Trim,<>,"")
+		F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvXtrTxt.RowCount--,1)
+			V.Local.sDesc4.Set(V.DataTable.dtInvXtrTxt(V.Local.iCnt2).TEXT!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc4, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc4.Trim, "'", "''", V.Local.sDesc4)
+			F.Intrinsic.Control.EndIf
+			
+			F.Intrinsic.String.Build("UPDATE INV_XTR_TXT_LANG SET TEXT = '{0}' WHERE PART = '{1}' AND LANG_CD = 'ENG'", V.Local.sDesc4.Trim, V.Local.sFullPart, V.local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.For(V.Local.iCnt2, 0, V.DataTable.dtInvXtrTxt.RowCount--,1)
+			V.Local.sDesc4.Set(V.DataTable.dtInvXtrTxt(V.Local.iCnt2).TEXT!FieldValTrim)
+			F.Intrinsic.String.IsInString(V.Local.sDesc4, "'", true, V.Local.bIsInStrng)
+			F.Intrinsic.Control.If(V.Local.bIsInStrng,=,True)
+				F.Intrinsic.String.Replace(v.Local.sDesc4.Trim, "'", "''", V.Local.sDesc4)
+			F.Intrinsic.Control.EndIf
+			
+			F.Intrinsic.String.Build("INSERT INTO INV_XTR_TXT_LANG (PART, LANG_CD, TEXT) VALUES ('{0}', 'ENG', '{1}')", V.Local.sFullPart, V.Local.sDesc4.Trim, V.Local.sSQL)
+			F.ODBC.Connection!con.Execute(V.Local.sSQL)
+		F.Intrinsic.Control.Next(V.Local.iCnt2)
+	F.Intrinsic.Control.EndIf
+		
+F.Intrinsic.Control.EndIf
+
+''call the script for the cache browser
+F.Intrinsic.String.Build("{0}CUSTOM\TE_ADD_DEL_ATG_BRW_INV.g2u", V.Caller.GasDir, V.Local.sCacheScript)
+
+F.Intrinsic.Control.If(V.Global.sPartExists,=,"N")
+	F.Intrinsic.String.Build("{0}@!@{1}@!@{2}@!@N@!@{3}", V.Local.sPart.Trim, V.Local.sRev.Trim, V.Local.sLoc.Trim, V.Global.sCoCode.Trim, V.Local.sSwitches)
+	F.Global.Task.CallAsyncGas(V.Local.sCacheScript, V.Local.sSwitches, 2, V.Local.iRet)
+
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("{0}@!@{1}@!@{2}@!@Y@!@{3}", V.Local.sPart.Trim, V.Local.sRev.Trim, V.Local.sLoc.Trim, V.Global.sCoCode.Trim,V.Local.sSwitches)
+	F.Global.Task.CallAsyncGas(V.Local.sCacheScript, V.Local.sSwitches, 2, V.Local.iRet)
+
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	V.Global.sRESTError.Set("Y")
+	F.Intrinsic.Control.CallSub(ErrorMessage, "ErrorNumber", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription, "Subroutine", V.Ambient.CurrentSubroutine, "UNATTENDED", V.Global.bUnattended, "Project", "6013", "ProjectTitle", "CPR Part Data Import", "Callback", "Form_UnLoad")
+F.Intrinsic.Control.EndTry
+Program.Sub.UpdatePartInfo.End
+
+Program.Sub.Form_Unload.Start
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sFileName.Declare(String)
+
+F.Intrinsic.String.Build("{0}\DataImport.pid", V.Caller.FilesDir, V.Local.sFileName)
+F.Intrinsic.File.Exists(V.Local.sFileName, V.Local.bFileExists)
+F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFileName)
+F.Intrinsic.Control.EndIf
+
+F.Communication.SFTP.Logoff
+F.Intrinsic.UI.CloseWaitDialog
+
+F.Intrinsic.Control.If(V.ODBC.con.State,=,1)
+	F.ODBC.Connection!con.Close
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conCom.Close
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}. File Name: {3}",V.Ambient.ErrorNumber,V.Ambient.CurrentSubroutine, V.Ambient.ErrorDescription, V.Global.sFile, V.Global.sErrorMessage)
+	F.Intrinsic.Control.CallSub(LogError)
+F.Intrinsic.Control.EndTry
+Program.Sub.Form_Unload.End
+
+Program.Sub.ErrorMessage.Start
+'basic error message for replacing catch block
+'this is really just for when printing the message and ending program
+'pass error number, error description, current subroutine
+'optional callback sub, this will be called before ending
+'optional unattended parameters, those subs may not exist if not using them but won't be called
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.iError.Declare(Long)
+V.Local.iRet.Declare(Long)
+V.Local.sErrorDescription.Declare(String)
+V.Local.sSubroutine.Declare(String)
+V.Local.sError.Declare(String)
+V.Local.bExists.Declare(Boolean)
+V.Local.sCallback.Declare(String)
+V.Local.sRESTError.Declare(String)
+V.Local.iError.Set(V.Args.ErrorNumber)
+V.Local.sErrorDescription.Set(V.Args.ErrorDescription)
+V.Local.sSubroutine.Set(V.Args.Subroutine)
+V.Local.sFileName.Declare(String)
+V.Local.sErrorFileFolder.Declare(String)
+
+'make sure we aren't in an error loop
+F.Intrinsic.Control.If(V.Global.bError)
+	F.Intrinsic.Control.End
+
+F.Intrinsic.Control.EndIf
+V.Global.bError.Set(True)
+
+F.Intrinsic.String.Build("{0}\DataImport.pid", V.Caller.FilesDir, V.Local.sFileName)
+F.Intrinsic.File.Exists(V.Local.sFileName, V.Local.bFileExists)
+F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFileName)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("Error {0} occurred in {1} Subroutine. Error description: {2}",V.Local.iError,V.Local.sSubroutine, V.Local.sErrorDescription, V.Global.sErrorDetails)
+F.Intrinsic.String.Replace(V.Global.sErrorDetails, V.Ambient.NewLine, " ", V.Global.sErrorDetails)
+
+
+F.Intrinsic.Control.If(V.Global.sRESTError,=,"Y")
+	V.Global.sRetry.Set("N")
+	F.Intrinsic.Control.CallSub(RESTCall)
+	
+	F.Intrinsic.Control.If(V.Global.sFilePath,<>,"")
+		F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\ErroredFiles\{1}", V.Caller.FilesDir, V.Global.sFile, V.Local.sErrorFileFolder)
+		F.Intrinsic.File.Exists(V.Local.sErrorFileFolder,V.Local.bFileExists)
+		F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+			F.Intrinsic.File.DeleteFile(V.Local.sErrorFileFolder)
+			F.Intrinsic.File.MoveFile(V.Global.sFilePath, V.Local.sErrorFileFolder, V.Local.iRet)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.File.MoveFile(V.Global.sFilePath, V.Local.sErrorFileFolder, V.Local.iRet)
+		F.Intrinsic.Control.EndIf
+		
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.CallSub(form_Unload)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Caller.ScriptFile, V.Ambient.Newline, V.Local.sSubroutine, V.Local.iError, V.Local.sErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+
+	F.Intrinsic.Variable.ArgExists("UNATTENDED", V.Local.bExists)
+	F.Intrinsic.Control.If(V.Local.bExists)
+		F.Intrinsic.Control.If(V.Args.UNATTENDED)
+			F.Intrinsic.Control.CallSub(UnattendedErrorMessage, "MESSAGE", V.Local.sError, "PROJECT", V.Args.PROJECT, "PROJECTTITLE", V.Args.PROJECTTITLE)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Variable.ArgExists("Callback", V.Local.bExists)
+	F.Intrinsic.Control.If(V.Local.bExists)
+		V.Local.sCallback.Set(V.Args.Callback.Trim)
+		F.Intrinsic.Control.CallSub(V.Local.sCallback)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.CallSub(form_Unload)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Caller.ScriptFile,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+F.Intrinsic.Control.EndTry
+Program.Sub.ErrorMessage.End
+
+Program.Sub.LogError.Start
+F.Intrinsic.Control.Try
+V.Local.bFileExists.Declare(Boolean)
+V.Local.sRESTError.Declare(String)
+V.Local.sErrorMessage.Declare(String)
+V.Local.sDate.Declare(String)
+V.Local.sTime.Declare(String)
+V.Local.sDateTime.Declare(String)
+V.Local.sProjName.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sFileName.Declare(String)
+V.Local.sErrorFileFolder.Declare(String)
+V.Local.iRet.Declare
+
+V.Local.sProjName.Set("GCG_6013_Data_Import")
+
+F.Intrinsic.Control.If(V.Global.sReadError,=,"Y")
+	V.Local.sErrorMessage.Set(V.Global.sErrorMessage.Trim)
+	F.Intrinsic.String.Build("INSERT INTO GCG_6013_ERROR_LOG VALUES ('File Read Error', '{0}', '{1}', '{2}', '{3}')", V.Local.sErrorMessage, V.Ambient.Date.PervasiveDate, V.Ambient.Time, V.Local.sProjName.Trim,V.Local.sSQL)
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Replace(V.Global.sErrorMessage, V.Ambient.NewLine, " ", V.Local.sErrorMessage)
+	F.Intrinsic.String.Build("INSERT INTO GCG_6013_ERROR_LOG VALUES ('GAB Error', '{0}', '{1}', '{2}', '{3}')", V.Local.sErrorMessage, V.Ambient.Date.PervasiveDate, V.Ambient.Time, V.Local.sProjName.Trim,V.Local.sSQL)
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!conCom.Execute(V.Local.sSQL)
+
+F.Intrinsic.Control.If(V.Global.sFilePath,<>,"")
+	F.Intrinsic.String.Build("{0}\PROCESS_OUTPUT\ErroredFiles\{1}", V.Caller.FilesDir, V.Global.sFile, V.Local.sErrorFileFolder)
+	F.Intrinsic.File.Exists(V.Local.sErrorFileFolder,V.Local.bFileExists)
+	F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+		F.Intrinsic.File.DeleteFile(V.Local.sErrorFileFolder)
+		F.Intrinsic.File.MoveFile(V.Global.sFilePath, V.Local.sErrorFileFolder, V.Local.iRet)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.File.MoveFile(V.Global.sFilePath, V.Local.sErrorFileFolder, V.Local.iRet)
+	F.Intrinsic.Control.EndIf
+		
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("{0}\DataImport.pid", V.Caller.FilesDir, V.Local.sFileName)
+F.Intrinsic.File.Exists(V.Local.sFileName, V.Local.bFileExists)
+F.Intrinsic.Control.If(V.Local.bFileExists,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sFileName)
+F.Intrinsic.Control.EndIf
+F.Communication.SFTP.Logoff
+F.Intrinsic.UI.CloseWaitDialog
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.CallSub(ErrorMessage, "ErrorNumber", V.Ambient.ErrorNumber, "ErrorDescription", V.Ambient.ErrorDescription, "Subroutine", V.Ambient.CurrentSubroutine, "UNATTENDED", V.Global.bUnattended, "Project", "6013", "ProjectTitle", "CPR Part Data Import", "Callback", "Form_UnLoad")
+F.Intrinsic.Control.EndTry
+Program.Sub.LogError.End
+
+Program.Sub.Comments.Start
+${$5$}$20.1.8413.19752$}$1
+${$6$}$acollins$}$20230130165312494$}$h98hERc2yV72q0GaUGlwSaoK/aefTdVk4pnMIo1oXFZEGuHC1/+1aCALo1AbiQHRKLDeSVMyxj8O6RZ2rasWww==
+Program.Sub.Comments.End
