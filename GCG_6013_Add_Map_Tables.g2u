@@ -1,0 +1,185 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.FormAddMapTables..Create(BaseForm)
+Gui.FormAddMapTables..Caption("Additional Part Mapping Tables")
+Gui.FormAddMapTables..Size(396,322)
+Gui.FormAddMapTables..MinX(0)
+Gui.FormAddMapTables..MinY(0)
+Gui.FormAddMapTables..Position(0,0)
+Gui.FormAddMapTables..AlwaysOnTop(False)
+Gui.FormAddMapTables..FontName("Tahoma")
+Gui.FormAddMapTables..FontSize(8.25)
+Gui.FormAddMapTables..ControlBox(True)
+Gui.FormAddMapTables..MaxButton(True)
+Gui.FormAddMapTables..MinButton(True)
+Gui.FormAddMapTables..MousePointer(0)
+Gui.FormAddMapTables..Moveable(True)
+Gui.FormAddMapTables..Sizeable(True)
+Gui.FormAddMapTables..ShowInTaskBar(True)
+Gui.FormAddMapTables..TitleBar(True)
+Gui.FormAddMapTables..Event(UnLoad,FormAddMapTables_UnLoad)
+Gui.FormAddMapTables.GsGridAddTables.Create(GsGridControl)
+Gui.FormAddMapTables.GsGridAddTables.Enabled(True)
+Gui.FormAddMapTables.GsGridAddTables.Visible(True)
+Gui.FormAddMapTables.GsGridAddTables.Zorder(0)
+Gui.FormAddMapTables.GsGridAddTables.Size(384,231)
+Gui.FormAddMapTables.GsGridAddTables.Position(7,22)
+Gui.FormAddMapTables.GsGridAddTables.Event(RowCellClick,GsGridAddTables_RowCellClick)
+Gui.FormAddMapTables.cmdSave.Create(Button)
+Gui.FormAddMapTables.cmdSave.Enabled(True)
+Gui.FormAddMapTables.cmdSave.Visible(True)
+Gui.FormAddMapTables.cmdSave.Zorder(0)
+Gui.FormAddMapTables.cmdSave.Size(75,23)
+Gui.FormAddMapTables.cmdSave.Position(7,261)
+Gui.FormAddMapTables.cmdSave.Caption("Save")
+Gui.FormAddMapTables.cmdSave.FontName("Tahoma")
+Gui.FormAddMapTables.cmdSave.FontSize(8.25)
+Gui.FormAddMapTables.cmdSave.Event(Click,cmdSave_Click)
+Gui.FormAddMapTables.lblNote.Create(Label,"** Entered Custom Tables must have Part and Loc fields",True,270,13,0,7,5,True,0,"Tahoma",8.25,,0,0)
+Gui.FormAddMapTables.lblNote.BorderStyle(0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sRet.Declare(String,"")
+V.Local.i.Declare(Long,0)
+
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+F.Global.Registry.ReadValue(1,"All","GCG_6013_PartField_Mapping.g2u",1,1,6,"",V.Local.sRet)
+
+F.Data.Datatable.Create("Tables",True)
+F.Data.Datatable.AddColumn("Tables","Custom_Table","String")
+F.Data.Datatable.AddColumn("Tables","Delete_Row","String")
+
+F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+F.Intrinsic.Control.For(V.Local.i,0,V.Local.sRet.UBound,1)
+	F.Data.Datatable.AddRow("Tables","Custom_Table",V.Local.sRet(V.Local.i).Ucase)
+F.Intrinsic.Control.Next(V.Local.i)
+
+Gui.FormAddMapTables.GsGridAddTables.AddGridviewFromDatatable("GVTables","Tables")
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","OptionsViewColumnAutoWidth",True)
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","AllowAddRows",True)
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","AllowFilter",False)
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","AllowSort",False)
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","AllowColumnMoving",False)
+gui.FormAddMapTables.GsGridAddTables.SetGridviewProperty("GVTables","Showgrouppanel",False)
+
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Custom_Table","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Delete_Row","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Custom_Table","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Delete_Row","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Custom_Table","Caption","Custom Table")
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Delete_Row","Caption"," ")
+
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Custom_Table","ReadOnly",False)
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Delete_Row","ReadOnly",True)
+
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Custom_Table","AllowEdit",True)
+gui.FormAddMapTables.GsGridAddTables.SetColumnProperty("GVTables","Delete_Row","AllowEdit",False)
+
+Gui.FormAddMapTables.GsGridAddTables.ColumnEdit("GVTables","Delete_Row","EditorButton","Delete")
+
+Gui.FormAddMapTables.GsGridAddTables.MainView("GVTables")
+
+Gui.FormAddMapTables..Show
+
+Gui.FormAddMapTables..AlwaysOnTop(True)
+Gui.FormAddMapTables..AlwaysOnTop(False)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(FormAddMapTables_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.FormAddMapTables_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("FormAddMapTables_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("FormAddMapTables_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.FormAddMapTables_UnLoad.End
+
+Program.Sub.cmdSave_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdSave_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.i.Declare(Long,0)
+V.Local.sTables.Declare(String,"")
+V.Local.sTemp.Declare(String,"")
+
+F.Intrinsic.Control.For(V.Local.i,0,V.DataTable.Tables.RowCount--,1)
+	V.Local.sTemp.Set(V.DataTable.Tables(V.Local.i).Custom_Table!FieldValTrim)
+	F.Intrinsic.Control.If(V.Local.sTables,=,"")
+		V.Local.sTables.Set(V.Local.sTemp.UCase)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.String.Build("{0}*!*{1}",V.Local.sTables,V.Local.sTemp.UCase,V.Local.sTables)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.i)
+
+F.ODBC.Connection!Common.OpenCommonConnection
+F.ODBC.Connection!common.Execute("Delete From Gs_Registry Where Program = 'GCG_6013_PartField_Mapping.g2u' and Reg_ID = 1 And Seq = 1;")
+F.ODBC.Connection!common.Close
+		
+F.Global.Registry.AddValue(1,"All","GCG_6013_PartField_Mapping.g2u",1,1,False,"CustomTables",False,0,-999.0,1/1/1980,12:00:00 AM,V.Local.sTables)
+
+F.Intrinsic.UI.Msgbox("Additional Part Mapping Tables Saved","Attention")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdSave_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(FormAddMapTables_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.GsGridAddTables_RowCellClick.Start
+F.Intrinsic.Control.SetErrorHandler("GsGridAddTables_RowCellClick_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.If(V.Args.Column.UCase,=,"DELETE_ROW")
+	F.Data.Datatable.DeleteRow("Tables",V.Args.RowIndex)
+	F.Data.Datatable.AcceptChanges("Tables")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGridAddTables_RowCellClick_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(FormAddMapTables_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGridAddTables_RowCellClick.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$acollins$}$20200708211941803$}$h98hERc2yV72q0GaUGlwSaoK/aefTdVkMo60XrNJzOBGiM0/oxEZ/1RvF/EBNuDAU20Dl/tG0w0d3jg698D/0w==
+Program.Sub.Comments.End
