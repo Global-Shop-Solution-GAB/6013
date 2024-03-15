@@ -1,0 +1,738 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.FormPartFieldMapping..Create(BaseForm)
+Gui.FormPartFieldMapping..Caption("Part Field Mapping")
+Gui.FormPartFieldMapping..Size(779,720)
+Gui.FormPartFieldMapping..MinX(0)
+Gui.FormPartFieldMapping..MinY(0)
+Gui.FormPartFieldMapping..Position(0,0)
+Gui.FormPartFieldMapping..AlwaysOnTop(False)
+Gui.FormPartFieldMapping..FontName("Tahoma")
+Gui.FormPartFieldMapping..FontSize(8.25)
+Gui.FormPartFieldMapping..ControlBox(True)
+Gui.FormPartFieldMapping..MaxButton(False)
+Gui.FormPartFieldMapping..MinButton(True)
+Gui.FormPartFieldMapping..MousePointer(0)
+Gui.FormPartFieldMapping..Moveable(True)
+Gui.FormPartFieldMapping..Sizeable(True)
+Gui.FormPartFieldMapping..ShowInTaskBar(True)
+Gui.FormPartFieldMapping..TitleBar(True)
+Gui.FormPartFieldMapping..Event(UnLoad,Form_UnLoad)
+Gui.FormPartFieldMapping.lvw1.Create(ListView)
+Gui.FormPartFieldMapping.lvw1.Enabled(True)
+Gui.FormPartFieldMapping.lvw1.Visible(True)
+Gui.FormPartFieldMapping.lvw1.Zorder(0)
+Gui.FormPartFieldMapping.lvw1.Size(402,25)
+Gui.FormPartFieldMapping.lvw1.Position(9,22)
+Gui.FormPartFieldMapping.lvw1.FontName("Tahoma")
+Gui.FormPartFieldMapping.lvw1.FontSize(8)
+Gui.FormPartFieldMapping.lvw1.View(0)
+Gui.FormPartFieldMapping.lvw1.Multiselect(False)
+Gui.FormPartFieldMapping.lvw1.CheckBoxes(False)
+Gui.FormPartFieldMapping.lvw1.ForeColor(0)
+Gui.FormPartFieldMapping.lvw1.Event(OLEDragDrop,lvw1_OLEDragDrop)
+Gui.FormPartFieldMapping.lvw1.Event(Click,lvw1_Click)
+Gui.FormPartFieldMapping.cmdFileBrowser.Create(Button)
+Gui.FormPartFieldMapping.cmdFileBrowser.Enabled(True)
+Gui.FormPartFieldMapping.cmdFileBrowser.Visible(True)
+Gui.FormPartFieldMapping.cmdFileBrowser.Zorder(0)
+Gui.FormPartFieldMapping.cmdFileBrowser.Size(31,25)
+Gui.FormPartFieldMapping.cmdFileBrowser.Position(414,22)
+Gui.FormPartFieldMapping.cmdFileBrowser.Caption("^")
+Gui.FormPartFieldMapping.cmdFileBrowser.FontName("Tahoma")
+Gui.FormPartFieldMapping.cmdFileBrowser.FontSize(8.25)
+Gui.FormPartFieldMapping.cmdFileBrowser.Event(Click,cmdFileBrowser_Click)
+Gui.FormPartFieldMapping.lblFile.Create(Label,"Select Output File To Map Columns To Inventory Fields",True,262,13,0,9,6,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblFile.BorderStyle(0)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Create(GsGridControl)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Enabled(True)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Visible(True)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Zorder(0)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Size(536,434)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Position(234,214)
+Gui.FormPartFieldMapping.GsGridOutputColumns.Anchor(15)
+Gui.FormPartFieldMapping.lblCompanyCode.Create(Label,"Select Company Code:",True,109,13,0,9,54,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblCompanyCode.BorderStyle(0)
+Gui.FormPartFieldMapping.GsGcCoCodes.Create(GsGridControl)
+Gui.FormPartFieldMapping.GsGcCoCodes.Enabled(True)
+Gui.FormPartFieldMapping.GsGcCoCodes.Visible(True)
+Gui.FormPartFieldMapping.GsGcCoCodes.Zorder(0)
+Gui.FormPartFieldMapping.GsGcCoCodes.Size(212,89)
+Gui.FormPartFieldMapping.GsGcCoCodes.Position(9,70)
+Gui.FormPartFieldMapping.GsGcCoCodes.Event(RowCellClick,GsGcCoCodes_RowCellClick)
+Gui.FormPartFieldMapping.lblInvTable.Create(Label,"Inventory Tables:",True,86,13,0,237,169,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblInvTable.BorderStyle(0)
+Gui.FormPartFieldMapping.ddlTable.Create(DropDownList)
+Gui.FormPartFieldMapping.ddlTable.Enabled(False)
+Gui.FormPartFieldMapping.ddlTable.Visible(True)
+Gui.FormPartFieldMapping.ddlTable.Zorder(0)
+Gui.FormPartFieldMapping.ddlTable.Size(242,20)
+Gui.FormPartFieldMapping.ddlTable.Position(237,186)
+Gui.FormPartFieldMapping.ddlTable.FontName("Tahoma")
+Gui.FormPartFieldMapping.ddlTable.FontSize(8.25)
+Gui.FormPartFieldMapping.ddlTable.Event(SelectedIndexChanged,ddlTable_SelectedIndexChanged)
+Gui.FormPartFieldMapping.cmdSave.Create(Button)
+Gui.FormPartFieldMapping.cmdSave.Enabled(True)
+Gui.FormPartFieldMapping.cmdSave.Visible(True)
+Gui.FormPartFieldMapping.cmdSave.Zorder(0)
+Gui.FormPartFieldMapping.cmdSave.Size(75,23)
+Gui.FormPartFieldMapping.cmdSave.Position(695,661)
+Gui.FormPartFieldMapping.cmdSave.Caption("Save")
+Gui.FormPartFieldMapping.cmdSave.FontName("Tahoma")
+Gui.FormPartFieldMapping.cmdSave.FontSize(8.25)
+Gui.FormPartFieldMapping.cmdSave.Anchor(10)
+Gui.FormPartFieldMapping.cmdSave.Event(Click,cmdSave_Click)
+Gui.FormPartFieldMapping.cmdClear.Create(Button)
+Gui.FormPartFieldMapping.cmdClear.Enabled(True)
+Gui.FormPartFieldMapping.cmdClear.Visible(True)
+Gui.FormPartFieldMapping.cmdClear.Zorder(0)
+Gui.FormPartFieldMapping.cmdClear.Size(75,25)
+Gui.FormPartFieldMapping.cmdClear.Position(9,659)
+Gui.FormPartFieldMapping.cmdClear.Caption("Clear Grids")
+Gui.FormPartFieldMapping.cmdClear.FontName("Tahoma")
+Gui.FormPartFieldMapping.cmdClear.FontSize(8.25)
+Gui.FormPartFieldMapping.cmdClear.Event(Click,cmdClear_Click)
+Gui.FormPartFieldMapping.cmdClear.Anchor(6)
+Gui.FormPartFieldMapping.GsGcFileHead.Create(GsGridControl)
+Gui.FormPartFieldMapping.GsGcFileHead.Enabled(True)
+Gui.FormPartFieldMapping.GsGcFileHead.Visible(True)
+Gui.FormPartFieldMapping.GsGcFileHead.Zorder(0)
+Gui.FormPartFieldMapping.GsGcFileHead.Size(212,461)
+Gui.FormPartFieldMapping.GsGcFileHead.Position(9,187)
+Gui.FormPartFieldMapping.GsGcFileHead.Anchor(7)
+Gui.FormPartFieldMapping.lblfileHead.Create(Label,"File Headers:",True,63,13,0,9,169,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblfileHead.BorderStyle(0)
+Gui.FormPartFieldMapping.FormulaFrame.Create(Frame)
+Gui.FormPartFieldMapping.FormulaFrame.Enabled(True)
+Gui.FormPartFieldMapping.FormulaFrame.Visible(True)
+Gui.FormPartFieldMapping.FormulaFrame.Zorder(0)
+Gui.FormPartFieldMapping.FormulaFrame.Size(379,102)
+Gui.FormPartFieldMapping.FormulaFrame.Position(237,57)
+Gui.FormPartFieldMapping.FormulaFrame.Caption("Valid Formulas:")
+Gui.FormPartFieldMapping.FormulaFrame.FontName("Tahoma")
+Gui.FormPartFieldMapping.FormulaFrame.FontSize(8.25)
+Gui.FormPartFieldMapping.FormulaFrame.BorderStyle(3)
+Gui.FormPartFieldMapping.lblNote1.Create(Label,"=LEFT([Column], [Length])",True,130,13,0,6,44,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblNote1.BorderStyle(0)
+Gui.FormPartFieldMapping.lblNote1.Parent("FormulaFrame")
+Gui.FormPartFieldMapping.lblNote0.Create(Label,"=SUBSTRING([Column], [start index (first char is at position 1)], [Length])",True,356,13,0,6,24,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblNote0.BorderStyle(0)
+Gui.FormPartFieldMapping.lblNote0.Parent("FormulaFrame")
+Gui.FormPartFieldMapping.lblConcat.Create(Label,"=([Column] && [Column])",True,115,13,0,6,84,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblConcat.BorderStyle(0)
+Gui.FormPartFieldMapping.lblConcat.Parent("FormulaFrame")
+Gui.FormPartFieldMapping.lblNote2.Create(Label,"=RIGHT([Column], [Length])",True,138,13,0,6,64,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblNote2.BorderStyle(0)
+Gui.FormPartFieldMapping.lblNote2.Parent("FormulaFrame")
+Gui.FormPartFieldMapping.lblSrcCode.Create(Label,"Select Source Code:",True,97,13,0,495,169,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblSrcCode.BorderStyle(0)
+Gui.FormPartFieldMapping.ddlSrcCode.Create(DropDownList)
+Gui.FormPartFieldMapping.ddlSrcCode.Enabled(True)
+Gui.FormPartFieldMapping.ddlSrcCode.Visible(True)
+Gui.FormPartFieldMapping.ddlSrcCode.Zorder(0)
+Gui.FormPartFieldMapping.ddlSrcCode.Size(121,20)
+Gui.FormPartFieldMapping.ddlSrcCode.Position(495,186)
+Gui.FormPartFieldMapping.ddlSrcCode.FontName("Tahoma")
+Gui.FormPartFieldMapping.ddlSrcCode.FontSize(8.25)
+Gui.FormPartFieldMapping.ddlSrcCode.Event(Change,ddlSrcCode_Change)
+Gui.FormPartFieldMapping.frameSrcCde.Create(Frame)
+Gui.FormPartFieldMapping.frameSrcCde.Enabled(True)
+Gui.FormPartFieldMapping.frameSrcCde.Visible(True)
+Gui.FormPartFieldMapping.frameSrcCde.Zorder(0)
+Gui.FormPartFieldMapping.frameSrcCde.Size(143,150)
+Gui.FormPartFieldMapping.frameSrcCde.Position(627,56)
+Gui.FormPartFieldMapping.frameSrcCde.Caption("Source Codes:")
+Gui.FormPartFieldMapping.frameSrcCde.FontName("Tahoma")
+Gui.FormPartFieldMapping.frameSrcCde.FontSize(8.25)
+Gui.FormPartFieldMapping.frameSrcCde.BorderStyle(3)
+Gui.FormPartFieldMapping.frameSrcCde.Anchor(9)
+Gui.FormPartFieldMapping.lblMS.Create(Label,"M: Manufacture to Stock",True,118,13,0,10,22,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblMS.BorderStyle(0)
+Gui.FormPartFieldMapping.lblMS.Parent("frameSrcCde")
+Gui.FormPartFieldMapping.lblMJ.Create(Label,"F: Manufacture to Job",True,107,13,0,10,43,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblMJ.BorderStyle(0)
+Gui.FormPartFieldMapping.lblMJ.Parent("frameSrcCde")
+Gui.FormPartFieldMapping.lblPS.Create(Label,"P: Purchase to Stock",True,99,13,0,10,64,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblPS.BorderStyle(0)
+Gui.FormPartFieldMapping.lblPS.Parent("frameSrcCde")
+Gui.FormPartFieldMapping.lblPJ.Create(Label,"J: Purchase to Job",True,89,13,0,10,85,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblPJ.BorderStyle(0)
+Gui.FormPartFieldMapping.lblPJ.Parent("frameSrcCde")
+Gui.FormPartFieldMapping.lblCS.Create(Label,"C: Consign to Stock",True,94,13,0,10,106,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblCS.BorderStyle(0)
+Gui.FormPartFieldMapping.lblCS.Parent("frameSrcCde")
+Gui.FormPartFieldMapping.lblCJ.Create(Label,"G: Consign to Job",True,85,13,0,10,127,True,0,"Tahoma",8.25,,0,0)
+Gui.FormPartFieldMapping.lblCJ.BorderStyle(0)
+Gui.FormPartFieldMapping.lblCJ.Parent("frameSrcCde")
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.sFields.Declare(String,"")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("cmdFileBrowser_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sTemp.Declare(String,"")
+V.Local.i.Declare(Long,0)
+V.Local.iC.Declare(Long,0)
+V.Local.sFields.Declare(String,"")
+V.Local.sRet.Declare(String,"")
+V.Global.sFields.Redim(0,4)
+V.Local.sSql.Declare(String)
+
+F.Intrinsic.UI.InvokeWaitDialog("Getting Inventory Mapping Fields...")
+
+F.ODBC.Connection!Con.OpenCompanyConnection
+F.ODBC.Connection!conCom.OpenCommonConnection
+
+F.ODBC.Connection!Con.GetSchemaFieldList("V_Inventory_Mstr",V.Global.sFields(0))
+F.ODBC.Connection!Con.GetSchemaFieldList("V_Inventory_Mst2",V.Global.sFields(1))
+F.ODBC.Connection!Con.GetSchemaFieldList("V_Inventory_Mst3",V.Global.sFields(2))
+'F.ODBC.Connection!Con.GetSchemaFieldList("V_Inv_Extra_Text",V.Global.sFields(3))
+F.ODBC.Connection!Con.GetSchemaFieldList("Inv_Extra",V.Global.sFields(3))
+
+Gui.FormPartFieldMapping.ddlTable.AddItem("",0)
+gui.FormPartFieldMapping.ddlTable.AddItem("INVENTORY_MSTR",1)
+gui.FormPartFieldMapping.ddlTable.AddItem("INVENTORY_MST2",2)
+gui.FormPartFieldMapping.ddlTable.AddItem("INVENTORY_MST3",3)
+'gui.FormPartFieldMapping.ddlTable.AddItem("INV_EXTRA_TEXT",4)
+gui.FormPartFieldMapping.ddlTable.AddItem("INV_EXTRA",4)
+
+F.Global.Registry.ReadValue(1,"All","GCG_6013_PartField_Mapping.g2u",1,1,6,"",V.Local.sRet)
+F.Intrinsic.Control.If(V.Local.sRet.Trim,<>,"")
+	F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+	F.Intrinsic.Math.Add(4,V.Local.sRet.UBound,1,V.Local.i)
+	V.Global.sFields.RedimPreserve(0,V.Local.i)
+	F.Intrinsic.Control.For(V.Local.i,5,V.Global.sFields.UBound,1)
+		F.Intrinsic.Math.Sub(V.Local.i,5,V.Local.iC)
+		gui.FormPartFieldMapping.ddlTable.AddItem(V.Local.sRet(V.Local.iC),V.Local.i)
+		F.ODBC.Connection!Con.GetSchemaFieldList(V.Local.sRet(V.Local.iC),V.Global.sFields(V.Local.i))
+		F.Intrinsic.String.Replace(V.Global.sFields(V.Local.i),"::",".",V.Global.sFields(V.Local.i))
+	F.Intrinsic.Control.Next(V.Local.i)
+F.Intrinsic.Control.EndIf
+
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("M",0)
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("F",0)
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("P",0)
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("J",0)
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("C",0)
+Gui.FormPartFieldMapping.ddlSrcCode.AddItem("G",0)
+
+F.Intrinsic.String.Replace(V.Global.sFields(0),"::",".",V.Global.sFields(0))
+F.Intrinsic.String.Replace(V.Global.sFields(1),"::",".",V.Global.sFields(1))
+F.Intrinsic.String.Replace(V.Global.sFields(2),"::",".",V.Global.sFields(2))
+'F.Intrinsic.String.Replace(V.Global.sFields(3),"::",".",V.Global.sFields(3))
+F.Intrinsic.String.Replace(V.Global.sFields(3),"Inv_Extra::","",V.Global.sFields(3))
+
+F.Intrinsic.String.Replace(V.Global.sFields(0),"V_Inventory_Mstr","INVENTORY_MSTR",V.Global.sFields(0))
+F.Intrinsic.String.Replace(V.Global.sFields(1),"V_Inventory_Mst2","INVENTORY_MST2",V.Global.sFields(1))
+F.Intrinsic.String.Replace(V.Global.sFields(2),"V_Inventory_Mst3","INVENTORY_MST3",V.Global.sFields(2))
+'F.Intrinsic.String.Replace(V.Global.sFields(3),"V_Inv_Extra_Text","INV_EXTRA_TEXT",V.Global.sFields(3))
+
+F.Data.Datatable.CreateFromSQL("InvExtra","Con","Select * From Inv_Extra_Titles",True)
+
+F.Intrinsic.String.Split(V.Global.sFields(3),"*!*",V.Local.sTemp)
+F.Intrinsic.Control.For(V.Local.i,0,V.Local.sTemp.UBound,1)
+	F.Intrinsic.Control.If(V.DataTable.InvExtra(V.DataTable.InvExtra.RowCount--).[V.Local.sTemp(V.Local.i)]!FieldValTrim,<>,"")
+		F.Intrinsic.String.Build("INV_EXTRA.{0}",V.DataTable.InvExtra(V.DataTable.InvExtra.RowCount--).[V.Local.sTemp(V.Local.i)]!FieldValTrim,V.Global.sFields(3))
+		F.Intrinsic.Control.If(V.Local.sFields,=,"")
+			V.Local.sFields.Set(V.Global.sFields(3))
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Build("{0}*!*{1}",V.Local.sFields,V.Global.sFields(3),V.Local.sFields)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.i)
+
+V.Global.sFields(3).Set(V.Local.sFields)
+
+F.ODBC.Connection!Con.Close
+
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+'populaing ddl for companies
+F.ODBC.Connection!ConC.OpenCommonConnection
+F.Data.Datatable.CreateFromSQL("CoCode","ConC","Select rtrim(CoCode) as CoCode, Cast(0 as Bit) as Selection From Companies Order by CoCode",True)
+gui.FormPartFieldMapping.GsGcCoCodes.AddGridviewFromDatatable("GVCoCode","CoCode")
+
+gui.FormPartFieldMapping.GsGcCoCodes.SetGridviewProperty("GVCoCode","OptionsViewColumnAutoWidth",True)
+gui.FormPartFieldMapping.GsGcCoCodes.SetGridviewProperty("GVCoCode","AllowFilter",False)
+gui.FormPartFieldMapping.GsGcCoCodes.SetGridviewProperty("GVCoCode","AllowSort",False)
+gui.FormPartFieldMapping.GsGcCoCodes.SetGridviewProperty("GVCoCode","AllowColumnMoving",False)
+gui.FormPartFieldMapping.GsGcCoCodes.SetGridviewProperty("GVCoCode","Showgrouppanel",False)
+
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","CoCode","AllowEdit",False)
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","CoCode","ReadOnly",True)
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","Selection","AllowEdit",False)
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","Selection","ReadOnly",True)
+
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","CoCode","Caption","Company Code")
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","Selection","Caption","Selection")
+
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","CoCode","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","Selection","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","CoCode","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("GVCoCode","Selection","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+
+Gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("gvCoCode", "CoCode", "MaxWidth",125)
+Gui.FormPartFieldMapping.GsGcCoCodes.SetColumnProperty("gvCoCode", "Selection", "MaxWidth",75)
+
+gui.FormPartFieldMapping.GsGcCoCodes.MainView("GVCoCode")
+
+F.ODBC.Connection!ConC.Close
+
+gui.FormPartFieldMapping.ddlTable.ListIndex(0)
+
+F.Intrinsic.UI.CloseWaitDialog
+
+gui.FormPartFieldMapping..Show
+
+gui.FormPartFieldMapping..AlwaysOnTop(True)
+gui.FormPartFieldMapping..AlwaysOnTop(False)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdFileBrowser_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.lvw1_OLEDragDrop.Start
+F.Intrinsic.Control.SetErrorHandler("lvw1_OLEDragDrop_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sFile.Declare(String,"")
+V.Local.sFileContent.Declare(String,"")
+V.Local.sHeaders.Declare(String,"")
+V.Local.sTable.Declare(String, "")
+V.Local.i.Declare(Long,0)
+V.Local.iTblCnt.Declare(Long,0)
+V.Local.iColCnt.Declare(Long, 0)
+
+'listview allows multlipe files to be droped in
+'spliting the argument to process only the first file
+F.Intrinsic.String.Split(V.Args.Files,"*!*",V.Local.sFile)
+
+F.Intrinsic.Control.If(V.Args.Files.UCase,=,"***CANCEL***")
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+'looping through file liist
+F.Intrinsic.Control.If(V.DataTable.Output.Exists)
+	F.Data.Datatable.Close("Output")
+F.Intrinsic.Control.EndIf
+
+F.Data.Datatable.Create("Output",True)
+F.Data.Datatable.AddColumn("Output","CoCode","String")
+F.Data.Datatable.AddColumn("Output","Inv_Field","String")
+F.Data.Datatable.AddColumn("Output","Formula","String")
+'loop through the table schemas and add them to the inventory field column in the output table
+F.Intrinsic.Control.For(V.Local.iTblCnt,V.Global.sFields.LBound, V.Global.sFields.UBound,1)
+	F.Intrinsic.String.Split(V.Global.sFields(V.Local.iTblCnt),"*!*", V.Local.sTable)
+	F.Intrinsic.Control.For(V.Local.iColCnt, V.Local.sTable.LBound, V.Local.sTable.UBound,1)
+		
+		F.Data.DataTable.AddRow("Output", "INV_FIELD", V.Local.sTable(V.Local.iColCnt).Trim)
+		
+	F.Intrinsic.Control.Next(V.Local.iColCnt)
+F.Intrinsic.Control.Next(V.Local.iTblCnt)
+'create a filter where nothing matches so the grid loads empty
+F.Data.DataView.Create("Output", "dvOutput", 22, "INV_FIELD = '' ", "")
+
+'Create datatable for file headers
+F.Intrinsic.Control.If(V.DataTable.dtFileHeaders.Exists)
+	f.Data.DataTable.Close("dtFileHeaders")
+F.Intrinsic.Control.EndIf
+
+F.Data.DataTable.Create("dtFileHeaders", True)
+F.Data.Datatable.AddColumn("dtFileHeaders","File_Header","String")
+
+F.Intrinsic.File.File2String(V.Local.sFile,V.Local.sFileContent)
+F.Intrinsic.Control.If(V.Local.sFileContent.Length,>,0)
+	F.Intrinsic.String.Split(V.Local.sFileContent,V.ASCII.10,V.Local.sHeaders)
+	F.Intrinsic.String.Split(V.Local.sHeaders,"|",V.Local.sHeaders)
+	F.Intrinsic.Control.If(V.Local.sHeaders.UBound,>,1)
+		F.Intrinsic.Control.For(V.Local.i,0,V.Local.sHeaders.UBound,1)
+			F.Data.Datatable.AddRow("dtFileHeaders","File_Header",V.Local.sHeaders(V.Local.i).Trim)
+		F.Intrinsic.Control.Next(V.Local.i)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+Gui.FormPartFieldMapping.GsGridOutputColumns.AddGridviewFromDataview("GVOutput", "Output", "dvOutput")
+gui.FormPartFieldMapping.GsGridOutputColumns.SetGridviewProperty("GVOutput","OptionsViewColumnAutoWidth",True)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetGridviewProperty("GVOutput","AllowFilter",False)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetGridviewProperty("GVOutput","AllowSort",False)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetGridviewProperty("GVOutput","AllowColumnMoving",False)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetGridviewProperty("GVOutput","Showgrouppanel",False)
+
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","Visible",False)
+
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","AllowEdit",False)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","ReadOnly",True)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Inv_Field","AllowEdit",False)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Inv_Field","ReadOnly",True)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Formula","AllowEdit",True)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Formula","ReadOnly",False)
+
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","Caption","Company Code")
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Inv_Field","Caption","Inv Fields")
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Formula","Caption","Formula")
+
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Inv_Field","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Formula","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","CoCode","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Inv_Field","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+gui.FormPartFieldMapping.GsGridOutputColumns.SetColumnProperty("GVOutput","Formula","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+
+gui.FormPartFieldMapping.GsGridOutputColumns.MainView("GVOutput")
+
+'add grid view and properties to header table
+gui.FormPartFieldMapping.GsGcFileHead.AddGridviewFromDatatable("gvFileHeaders", "dtFileHeaders")
+gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders","OptionsViewColumnAutoWidth",True)
+gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders","AllowFilter",False)
+gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders","AllowSort",False)
+gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders","AllowColumnMoving",False)
+gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders","Showgrouppanel",False)
+Gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders", "AllowAddRows", True)
+Gui.FormPartFieldMapping.GsGcFileHead.SetGridviewProperty("gvFileHeaders", "AllowDeleteRows", True)
+
+gui.FormPartFieldMapping.GsGcFileHead.SetColumnProperty("gvFileHeaders","File_Header","AllowEdit",True)
+gui.FormPartFieldMapping.GsGcFileHead.SetColumnProperty("gvFileHeaders","File_Header","ReadOnly",False)
+gui.FormPartFieldMapping.GsGcFileHead.SetColumnProperty("gvFileHeaders","File_Header","Caption","File Header")
+gui.FormPartFieldMapping.GsGcFileHead.SetColumnProperty("gvFileHeaders","File_Header","HeaderBackColor",V.Enum.ThemeColors!ThemeColorDark)
+gui.FormPartFieldMapping.GsGcFileHead.SetColumnProperty("gvFileHeaders","File_Header","HeaderForeColor",V.Enum.ThemeColors!TextOnThemeColor)
+
+Gui.FormPartFieldMapping.GsGcFileHead.MainView("gvFileHeaders")
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("lvw1_OLEDragDrop_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.lvw1_OLEDragDrop.End
+
+Program.Sub.cmdFileBrowser_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdFileBrowser_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sRet.Declare(String,"")
+
+'when selecting from the browser only show OUTPUT files
+F.Intrinsic.UI.ShowOpenFileDialog("","OUTPUT [.OUTPUT]|*.OUTPUT","",V.Local.sRet)
+'checking to see if a file was chosen
+F.Intrinsic.Control.If(V.Local.sRet.Length,>,0)
+	'passing file location when user drops file in list view
+	F.Intrinsic.Control.CallSub(lvw1_OLEDragDrop,"Files",V.Local.sRet)
+F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdFileBrowser_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdFileBrowser_Click.End
+
+Program.Sub.Form_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("Form_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+F.ODBC.Connection!conCom.Close
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Form_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.Form_UnLoad.End
+
+Program.Sub.lvw1_Click.Start
+F.Intrinsic.Control.SetErrorHandler("lvw1_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sRet.Declare(String,"")
+
+'when selecting from the browser only show OUTPUT files
+F.Intrinsic.UI.ShowOpenFileDialog("","OUTPUT [.OUTPUT]|*.OUTPUT","",V.Local.sRet)
+'checking to see if a file was chosen
+F.Intrinsic.Control.If(V.Local.sRet.Length,>,0)
+	'passing file location when user drops file in list view
+	F.Intrinsic.Control.CallSub(lvw1_OLEDragDrop,"Files",V.Local.sRet)
+F.Intrinsic.Control.EndIf
+	
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("lvw1_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.lvw1_Click.End
+
+Program.Sub.ddlTable_SelectedIndexChanged.Start
+F.Intrinsic.Control.SetErrorHandler("ddlTable_SelectedIndexChanged_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.iCnt.Declare(Long)
+V.Local.iListIndex.Declare(Long)
+V.Local.iTableField.Declare(Long)
+V.Local.sHeaders.Declare(String)
+V.Local.sError.Declare(String,"")
+V.Local.sTblName.Declare(String)
+V.Local.sFilter.Declare(String)
+V.Local.sCol.Declare(String)
+V.Local.sSourceCode.Declare(String)
+
+V.Local.sTblName.Set(V.Screen.FormPartFieldMapping!ddlTable.Value)
+
+'check to see if the output table exists
+F.Intrinsic.Control.If(V.DataTable.Output.Exists)
+	'if the ddl selection is blank, filter the datatable to show nothing
+	F.Intrinsic.Control.If(V.Local.sTblName,=, "")
+		F.Data.DataView.SetFilter("Output", "dvOutput", "INV_FIELD = '' ")
+	F.Intrinsic.Control.Else
+		'if the ddl selection is a tabla name, filter the datatable to only show the rows that match
+		F.Intrinsic.String.Build("INV_FIELD LIKE '%{0}.%'", V.Local.sTblName.Trim, V.Local.sFilter)
+		F.Data.DataView.SetFilter("Output", "dvOutput", V.Local.sFilter)
+	F.Intrinsic.Control.EndIf
+	
+	V.Local.sSourceCode.Set(V.Screen.FormPartFieldMapping!ddlSrcCode.Value)
+	F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataView.Output!dvOutput.RowCount--,1)
+		V.Local.sCol.Set(V.DataView.Output!dvOutput(V.Local.iCnt).INV_FIELD!FieldValTrim)
+		F.Intrinsic.Control.If(V.Local.sCol.Trim,=,"INVENTORY_MST2.CODE_SOURCE")
+			F.Data.DataView.SetValue("Output", "dvOutput", V.Local.iCnt, "FORMULA",V.Local.sSourceCode.Trim)
+		F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.SelectCase(V.Local.sCol)
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.PART")
+				Gui.FormPartFieldMapping.GsGridOutputColumns.SetRowAppearance("gvOutput", V.Local.iCnt, "BackColor", "Yellow")
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.UM_INVENTORY")
+				Gui.FormPartFieldMapping.GsGridOutputColumns.SetRowAppearance("gvOutput", V.Local.iCnt, "BackColor", "Yellow")
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.DESCRIPTION")
+				Gui.FormPartFieldMapping.GsGridOutputColumns.SetRowAppearance("gvOutput", V.Local.iCnt, "BackColor", "Yellow")
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.PRODUCT_LINE")
+				Gui.FormPartFieldMapping.GsGridOutputColumns.SetRowAppearance("gvOutput", V.Local.iCnt, "BackColor", "Yellow")
+			F.Intrinsic.Control.Case("INVENTORY_MSTR.LOCATION")
+				F.Data.DataView.SetValue("Output", "dvOutput", V.Local.iCnt, "FORMULA","**DO NOT CHANGE THIS VALUE**")
+			F.Intrinsic.Control.Case("INVENTORY_MST2.CODE_SOURCE")
+				Gui.FormPartFieldMapping.GsGridOutputColumns.SetRowAppearance("gvOutput", V.Local.iCnt, "BackColor", "Yellow")
+		F.Intrinsic.Control.EndSelect
+	F.Intrinsic.Control.Next(V.Local.iCnt)
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("ddlTable_SelectedIndexChanged_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.ddlTable_SelectedIndexChanged.End
+
+Program.Sub.ddlSrcCode_Change.Start
+F.Intrinsic.Control.Try
+F.Intrinsic.Control.SetErrorHandler("ddlSrcCode_Change_Err")
+F.Intrinsic.Control.ClearErrors
+
+Gui.FormPartFieldMapping.ddlTable.Enabled(True)
+
+F.Intrinsic.Control.Label("ddlSrcCode_Change_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.ddlSrcCode_Change.End
+
+Program.Sub.GsGcCoCodes_RowCellClick.Start
+F.Intrinsic.Control.SetErrorHandler("GsGcCoCodes_RowCellClick_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.iCnt.Declare(Long)
+V.Local.iRow.Declare(Long)
+V.Local.sCoCode.Declare(String,"")
+V.Local.sError.Declare(String,"")
+V.Local.sSql.Declare(String,"")
+V.Local.sFilter.Declare(String,"")
+V.Local.sFormula.Declare(String,"")
+V.Local.sInvField.Declare(String,"")
+V.Local.sRow.Declare(String, "")
+
+F.Intrinsic.Control.If(V.ODBC.con.State,=,0)
+	F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.Args.Column.UCase,=,"SELECTION")
+	F.Intrinsic.Control.If(V.DataTable.CoCode(V.Args.RowIndex).Selection!FieldVal,=,True)
+
+		F.Data.Datatable.SetValue("CoCode",V.Args.RowIndex,"Selection",V.DataTable.CoCode(V.Args.RowIndex).Selection!FieldValNot)
+		V.Local.sCoCode.Set(V.DataTable.CoCode(V.Args.RowIndex).CoCode!FieldValTrim)
+		F.Intrinsic.String.Build("CoCode = '{0}'", V.Local.sCoCode.Trim, V.Local.sFilter)
+		F.Data.DataTable.Select("Output", V.Local.sFilter, V.Local.sRow)
+		F.Intrinsic.Control.If(V.Local.sRow.Trim,<>,"***NORETURN***")
+			F.Intrinsic.String.Split(V.Local.sRow,"*!*", V.Local.sRow)
+			F.Intrinsic.Control.For(V.Local.iCnt, V.Local.sRow.LBound, V.Local.sRow.UBound,1)
+				V.Local.iRow.Set(V.Local.sRow(V.Local.iCnt).Long)
+				F.Data.DataTable.SetValue("Output", V.Local.iRow,"CoCode","", "FORMULA", "")
+				F.Data.DataTable.AcceptChanges("Output")
+			F.Intrinsic.Control.Next(V.Local.iCnt)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.DataTable.CoCode(V.Args.RowIndex).Selection!FieldValNot,=,True)
+			F.Data.Datatable.SetValue("CoCode",V.Args.RowIndex,"Selection",V.DataTable.CoCode(V.Args.RowIndex).Selection!FieldValNot)
+			
+			V.Local.sCoCode.Set(V.DataTable.CoCode(V.Args.RowIndex).CoCode!FieldValTrim)
+			F.Intrinsic.String.Build("SELECT INV_FIELD, FORMULA FROM GCG_6013_PART_MAP WHERE COCODE = '{0}' ", V.Local.sCoCode.Trim,V.Local.sSql)
+			F.Data.DataTable.CreateFromSQL("dtExistMap", "conCom", V.Local.sSql)
+	
+			F.Intrinsic.Control.If(V.DataTable.Output.Exists)
+				F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataTable.dtExistMap.RowCount--,1)
+					V.Local.sInvField.Set(V.DataTable.dtExistMap(V.Local.iCnt).INV_FIELD!FIeldValTrim)
+					V.Local.sFormula.Set(V.DataTable.dtExistMap(V.Local.iCnt).FORMULA!FieldValTrim)
+					F.Intrinsic.String.Build("INV_FIELD = '{0}'", V.Local.sInvField.Trim, V.Local.sFilter)
+					F.Data.DataTable.Select("Output", V.Local.sFilter, V.Local.sRow)
+					F.Intrinsic.Control.If(V.Local.sRow.Trim,<>,"***NORETURN***")
+						F.Data.DataTable.SetValue("Output", V.Local.sRow.Long,"CoCode", V.Local.sCoCode.Trim, "FORMULA", V.Local.sFormula)
+					F.Intrinsic.Control.EndIf
+				F.Intrinsic.Control.Next(V.Local.iCnt)
+			F.Intrinsic.Control.EndIf
+	
+		F.Intrinsic.Control.Else
+			F.Data.Datatable.SetValue("CoCode",V.Args.RowIndex,"Selection",V.DataTable.CoCode(V.Args.RowIndex).Selection!FieldValNot)
+			F.Data.DataTable.Select("Output", "FORMULA = '**DO NOT CHANGE THIS VALUE**'", V.Local.sRow)
+			F.Data.DataTable.SetValue("Output", -1, "FORMULA", "")
+			F.Data.DataTable.SetValue("Output", V.Local.sRow.Long, "FORMULA", "**DO NOT CHANGE THIS VALUE**")
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGcCoCodes_RowCellClick_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGcCoCodes_RowCellClick.End
+
+Program.Sub.cmdSave_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdSave_Click_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.iCnt.Declare(Long)
+V.Local.sSelected.Declare(String)
+V.Local.sError.Declare(String,"")
+V.Local.i.Declare(Long,0)
+
+V.Local.sSql.Declare(String,"")
+V.Local.sFilter.Declare(String,"")
+
+F.Data.DataView.Create("CoCode","VCoCode",22,"Selection = True","")
+'create a filter of all the rows that have a formula
+F.Data.DataView.SetFilter("Output", "dvOutput", "FORMULA <> ''" )
+'check to see if the datatable for saving exists, if it does, close it
+F.Intrinsic.Control.If(V.DataTable.dtSaveOutput.Exists)
+	F.Data.DataTable.Close("dtSaveOutput")
+F.Intrinsic.Control.EndIf
+'move the dataview to a distinct table for saving to the database
+F.Data.DataView.ToDataTable("Output", "dvOutput", "dtSaveOutput",True)
+
+F.Intrinsic.Control.If(V.DataView.CoCode!VCoCode.RowCount--,>,-1)
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	F.Intrinsic.Control.For(V.Local.i,0,V.DataView.CoCode!VCoCode.RowCount--,1)
+		F.Data.Datatable.SetValue("dtSaveOutput",-1,"CoCode",V.DataView.CoCode!VCoCode(V.Local.i).CoCode!FieldValTrim)
+		F.Intrinsic.String.Build("Delete From GCG_6013_Part_Map Where CoCode = '{0}'",V.DataView.CoCode!VCoCode(V.Local.i).CoCode!FieldValTrim,V.Local.sSql)
+		F.ODBC.Connection!conCom.Execute(V.Local.sSql)
+
+		F.Data.Datatable.SaveToDB("dtSaveOutput","conCom","GCG_6013_Part_Map","",128,"CoCode@!@CoCode*!*Inv_Field@!@Inv_Field*!*Formula@!@Formula")
+	F.Intrinsic.Control.Next(V.Local.i)
+	F.ODBC.Connection!Con.Close
+	F.Intrinsic.UI.Msgbox("Part Field Mapping Saved to Selected Company Codes","Attention")
+
+	F.Data.DataTable.SetValue("Output", -1, "Formula", "")
+	F.Intrinsic.Control.CallSub(ddlTable_SelectedIndexChanged)
+F.Intrinsic.Control.Else
+	F.Intrinsic.UI.Msgbox("Select Company Code(s) to Save Field Mapping.","Attention")
+F.Intrinsic.Control.EndIf
+
+F.Data.DataView.Close("CoCode","VCoCode")
+
+F.Intrinsic.Control.For(V.Local.iCnt, 0, V.DataTable.CoCode.RowCount--,1)
+	V.Local.sSelected.Set(V.DataTable.CoCode(v.Local.iCnt).SELECTION!Fieldval)
+	F.Intrinsic.Control.If(V.Local.sSelected,=,True)
+		F.Data.DataTable.SetValue("CoCode", V.Local.iCnt, "SELECTION", False)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iCnt)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdSave_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.cmdClear_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdClear_Click_Err")
+F.Intrinsic.Control.ClearErrors
+V.Local.iCnt.Declare(Long)
+V.Local.sError.Declare(String,"")
+V.Local.sSelected.Declare(String)
+
+F.Intrinsic.Control.For(V.Local.iCnt, 0, V.DataTable.CoCode.RowCount--,1)
+	V.Local.sSelected.Set(V.DataTable.CoCode(v.Local.iCnt).SELECTION!Fieldval)
+	F.Intrinsic.Control.If(V.Local.sSelected,=,True)
+		F.Data.DataTable.SetValue("CoCode", V.Local.iCnt, "SELECTION", False)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iCnt)
+
+F.Intrinsic.Control.If(V.DataTable.Output.Exists)
+	F.Data.Datatable.DeleteRow("Output")
+	F.Data.Datatable.Close("Output")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.If(V.DataTable.dtFileHeaders.Exists)
+	F.Data.DataTable.DeleteRow("dtFileHeaders")
+	F.Data.DataTable.Close("dtFileHeaders")
+F.Intrinsic.Control.EndIf
+
+gui.FormPartFieldMapping.ddlTable.ListIndex(0)
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdClear_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6013_PartField_Mapping.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(Form_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdClear_Click.End
+
+Program.Sub.Comments.Start
+${$5$}$2.2020.1.105$}$1
+${$6$}$acollins$}$20220125121952795$}$h98hERc2yV72q0GaUGlwSaoK/aefTdVk/XotSp2jZHiepxx9KPuucagawZ18g6aRkvhLlpBZGk+WF/wxJ8dx6w==
+Program.Sub.Comments.End
